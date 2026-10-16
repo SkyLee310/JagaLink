@@ -10,7 +10,7 @@ DEV_SESSION_SECRET = "dev-only-session-secret"
 
 
 class Settings(BaseSettings):
-    # Errors leave out the input: it holds DATABASE_URL, password included, and lands in deploy logs.
+    # Errors leave out the input: it holds DATABASE_URL with its password, and errors reach logs.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     app_env: Literal["dev", "test", "prod"] = "dev"
