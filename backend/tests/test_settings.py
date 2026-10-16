@@ -33,5 +33,11 @@ def test_prod_refuses_a_short_secret() -> None:
         make(app_env="prod", session_secret="too-short")
 
 
+def test_errors_keep_the_database_password_out_of_logs() -> None:
+    with pytest.raises(ValidationError) as caught:
+        make(app_env="prod", database_url="postgresql://u:hunter2@db:5432/app")
+    assert "hunter2" not in str(caught.value)
+
+
 def test_prod_accepts_a_long_secret() -> None:
     assert make(app_env="prod", session_secret="x" * 48).app_env == "prod"

@@ -10,7 +10,8 @@ DEV_SESSION_SECRET = "dev-only-session-secret"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Errors leave out the input: it holds DATABASE_URL, password included, and lands in deploy logs.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     app_env: Literal["dev", "test", "prod"] = "dev"
     database_url: str = "postgresql+psycopg://jagalink:jagalink@localhost:5432/jagalink"

@@ -39,6 +39,7 @@ lint:
 
 build:
 	cd frontend && pnpm build
+	docker build -t jagalink-api backend
 
 # Rerun after every API change: both files are committed and CI checks them (D-42).
 types:
