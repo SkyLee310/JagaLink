@@ -1,0 +1,74 @@
+# Backend checks (D-48). Runs on every pull request so the required `backend` check always
+# reports; the job is skipped, which GitHub counts as passed, when nothing in backend/ changed.
+name: backend
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        name: Check whether backend files changed
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        # A base that git cannot resolve, such as on a branch's first push, counts as changed.
+        run: |
+          if git diff --quiet "$BASE" HEAD -- backend .github/workflows/backend.yml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: jagalink
+          POSTGRES_PASSWORD: jagalink
+          POSTGRES_DB: jagalink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jagalink -d jagalink"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql+psycopg://jagalink:jagalink@localhost:5432/jagalink
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.12.3"
+          working-directory: backend
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - name: Tests, including the check that openapi.json is current (D-42)
+        run: uv run pytest
