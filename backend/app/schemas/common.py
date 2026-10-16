@@ -1,6 +1,9 @@
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, StringConstraints
+
+# Human-readable references used by files and scenarios (D-75), e.g. c-gate-02, u-guard-02.
+Code = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$", max_length=40)]
 
 
 class ErrorOut(BaseModel):

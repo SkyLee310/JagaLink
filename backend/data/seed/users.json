@@ -1,0 +1,9 @@
+{
+  "community": "taman-simulasi",
+  "users": [
+    { "code": "u-sup-01", "name": "Supervisor", "role": "supervisor", "on_duty": true, "current_node": null },
+    { "code": "u-guard-01", "name": "Guard A", "role": "guard", "on_duty": true, "current_node": "c-gate-01" },
+    { "code": "u-guard-02", "name": "Guard B", "role": "guard", "on_duty": true, "current_node": "c-main-02" },
+    { "code": "u-guard-03", "name": "Guard C", "role": "guard", "on_duty": false, "current_node": null }
+  ]
+}

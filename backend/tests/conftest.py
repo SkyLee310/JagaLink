@@ -12,6 +12,7 @@ from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
+from app.db.seed import SeedReport, seed
 from app.db.session import get_db
 from app.main import create_app
 
@@ -69,6 +70,11 @@ def db(engine: Engine) -> Iterator[Session]:
         finally:
             session.close()
             transaction.rollback()
+
+
+@pytest.fixture
+def seeded(db: Session) -> SeedReport:
+    return seed(db)
 
 
 @pytest.fixture

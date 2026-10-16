@@ -1,6 +1,6 @@
 # JagaLink tasks. Recipes stay plain `cd dir && command`, so they run in Git Bash, cmd and CI.
 
-.PHONY: install db migrate test lint dev-api
+.PHONY: install db migrate seed seed-reset test lint dev-api
 
 install:
 	cd backend && uv sync
@@ -11,11 +11,18 @@ db:
 migrate: db
 	cd backend && uv run alembic upgrade head
 
+# Loads Taman Simulasi if it is missing; seed-reset reloads it for a clean demo (D-27).
+seed: migrate
+	cd backend && uv run python -m app.db.seed
+
+seed-reset: migrate
+	cd backend && uv run python -m app.db.seed --reset
+
 test: db
 	cd backend && uv run pytest
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
 
-dev-api: migrate
+dev-api: seed
 	cd backend && uv run uvicorn app.main:app --reload --port 8000

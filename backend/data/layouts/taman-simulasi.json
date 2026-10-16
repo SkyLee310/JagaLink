@@ -1,0 +1,517 @@
+{
+  "community": {
+    "slug": "taman-simulasi",
+    "name": "Taman Simulasi",
+    "map_image_url": "/maps/taman-simulasi.svg",
+    "scale_m_per_px": 0.25,
+    "timezone": "Asia/Kuala_Lumpur"
+  },
+  "zones": [
+    {
+      "code": "z-gate",
+      "name": "Main gate",
+      "kind": "gate",
+      "polygon": [
+        [
+          40,
+          340
+        ],
+        [
+          160,
+          340
+        ],
+        [
+          160,
+          460
+        ],
+        [
+          40,
+          460
+        ]
+      ]
+    },
+    {
+      "code": "z-main",
+      "name": "Main road",
+      "kind": "street",
+      "polygon": [
+        [
+          160,
+          370
+        ],
+        [
+          1000,
+          370
+        ],
+        [
+          1000,
+          430
+        ],
+        [
+          160,
+          430
+        ]
+      ]
+    },
+    {
+      "code": "z-north",
+      "name": "North lanes",
+      "kind": "lane",
+      "polygon": [
+        [
+          280,
+          140
+        ],
+        [
+          840,
+          140
+        ],
+        [
+          840,
+          370
+        ],
+        [
+          280,
+          370
+        ]
+      ]
+    },
+    {
+      "code": "z-back",
+      "name": "Back lane",
+      "kind": "lane",
+      "polygon": [
+        [
+          280,
+          20
+        ],
+        [
+          840,
+          20
+        ],
+        [
+          840,
+          140
+        ],
+        [
+          280,
+          140
+        ]
+      ]
+    },
+    {
+      "code": "z-south",
+      "name": "South lanes",
+      "kind": "lane",
+      "polygon": [
+        [
+          280,
+          430
+        ],
+        [
+          840,
+          430
+        ],
+        [
+          840,
+          780
+        ],
+        [
+          280,
+          780
+        ]
+      ]
+    },
+    {
+      "code": "z-east",
+      "name": "Park and clubhouse",
+      "kind": "street",
+      "polygon": [
+        [
+          1000,
+          220
+        ],
+        [
+          1190,
+          220
+        ],
+        [
+          1190,
+          580
+        ],
+        [
+          1000,
+          580
+        ]
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "code": "c-gate-01",
+      "kind": "camera",
+      "name": "Gate, entry lane",
+      "x": 90,
+      "y": 380,
+      "heading_deg": 90,
+      "zone": "z-gate"
+    },
+    {
+      "code": "c-gate-02",
+      "kind": "camera",
+      "name": "Gate, exit lane",
+      "x": 90,
+      "y": 420,
+      "heading_deg": 270,
+      "zone": "z-gate"
+    },
+    {
+      "code": "c-main-01",
+      "kind": "camera",
+      "name": "Main road at lane 1",
+      "x": 320,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-main"
+    },
+    {
+      "code": "c-main-02",
+      "kind": "camera",
+      "name": "Main road at lane 2",
+      "x": 560,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-main"
+    },
+    {
+      "code": "c-main-03",
+      "kind": "camera",
+      "name": "Main road at lane 3",
+      "x": 800,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-main"
+    },
+    {
+      "code": "c-main-04",
+      "kind": "camera",
+      "name": "Main road, east end",
+      "x": 920,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-main"
+    },
+    {
+      "code": "c-lane-1n",
+      "kind": "camera",
+      "name": "Lane 1 north",
+      "x": 320,
+      "y": 280,
+      "heading_deg": 0,
+      "zone": "z-north"
+    },
+    {
+      "code": "c-lane-2n",
+      "kind": "camera",
+      "name": "Lane 2 north",
+      "x": 560,
+      "y": 280,
+      "heading_deg": 0,
+      "zone": "z-north"
+    },
+    {
+      "code": "c-lane-3n",
+      "kind": "camera",
+      "name": "Lane 3 north",
+      "x": 800,
+      "y": 280,
+      "heading_deg": 0,
+      "zone": "z-north"
+    },
+    {
+      "code": "c-lane-1s",
+      "kind": "camera",
+      "name": "Lane 1 south",
+      "x": 320,
+      "y": 540,
+      "heading_deg": 180,
+      "zone": "z-south"
+    },
+    {
+      "code": "c-lane-2s",
+      "kind": "camera",
+      "name": "Lane 2 south",
+      "x": 560,
+      "y": 540,
+      "heading_deg": 180,
+      "zone": "z-south"
+    },
+    {
+      "code": "c-lane-3s",
+      "kind": "camera",
+      "name": "Lane 3 south",
+      "x": 800,
+      "y": 540,
+      "heading_deg": 180,
+      "zone": "z-south"
+    },
+    {
+      "code": "c-back-01",
+      "kind": "camera",
+      "name": "Back lane, west",
+      "x": 320,
+      "y": 120,
+      "heading_deg": 90,
+      "zone": "z-back"
+    },
+    {
+      "code": "c-back-02",
+      "kind": "camera",
+      "name": "Back lane, centre",
+      "x": 560,
+      "y": 120,
+      "heading_deg": 90,
+      "zone": "z-back"
+    },
+    {
+      "code": "c-back-03",
+      "kind": "camera",
+      "name": "Back lane, east",
+      "x": 800,
+      "y": 120,
+      "heading_deg": 270,
+      "zone": "z-back"
+    },
+    {
+      "code": "c-park-01",
+      "kind": "camera",
+      "name": "Park entrance",
+      "x": 1040,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-east"
+    },
+    {
+      "code": "s-fence-n",
+      "kind": "sensor",
+      "name": "North fence",
+      "x": 560,
+      "y": 40,
+      "heading_deg": 0,
+      "zone": "z-back"
+    },
+    {
+      "code": "s-fence-e",
+      "kind": "sensor",
+      "name": "East fence",
+      "x": 1180,
+      "y": 400,
+      "heading_deg": 90,
+      "zone": "z-east"
+    },
+    {
+      "code": "s-fence-s",
+      "kind": "sensor",
+      "name": "South fence",
+      "x": 560,
+      "y": 760,
+      "heading_deg": 180,
+      "zone": "z-south"
+    },
+    {
+      "code": "s-club-01",
+      "kind": "sensor",
+      "name": "Clubhouse door",
+      "x": 1080,
+      "y": 300,
+      "heading_deg": 0,
+      "zone": "z-east"
+    }
+  ],
+  "links": [
+    {
+      "from_node": "c-gate-01",
+      "to_node": "c-main-01",
+      "travel_min_s": 44,
+      "travel_max_s": 53,
+      "bidirectional": false,
+      "distance_m": 62.5
+    },
+    {
+      "from_node": "c-main-01",
+      "to_node": "c-gate-02",
+      "travel_min_s": 44,
+      "travel_max_s": 53,
+      "bidirectional": false,
+      "distance_m": 62.5
+    },
+    {
+      "from_node": "c-main-01",
+      "to_node": "c-main-02",
+      "travel_min_s": 42,
+      "travel_max_s": 50,
+      "bidirectional": true,
+      "distance_m": 60.0
+    },
+    {
+      "from_node": "c-main-02",
+      "to_node": "c-main-03",
+      "travel_min_s": 42,
+      "travel_max_s": 50,
+      "bidirectional": true,
+      "distance_m": 60.0
+    },
+    {
+      "from_node": "c-main-03",
+      "to_node": "c-main-04",
+      "travel_min_s": 21,
+      "travel_max_s": 25,
+      "bidirectional": true,
+      "distance_m": 30.0
+    },
+    {
+      "from_node": "c-main-04",
+      "to_node": "c-park-01",
+      "travel_min_s": 21,
+      "travel_max_s": 25,
+      "bidirectional": true,
+      "distance_m": 30.0
+    },
+    {
+      "from_node": "c-main-01",
+      "to_node": "c-lane-1n",
+      "travel_min_s": 21,
+      "travel_max_s": 25,
+      "bidirectional": true,
+      "distance_m": 30.0
+    },
+    {
+      "from_node": "c-main-02",
+      "to_node": "c-lane-2n",
+      "travel_min_s": 21,
+      "travel_max_s": 25,
+      "bidirectional": true,
+      "distance_m": 30.0
+    },
+    {
+      "from_node": "c-main-03",
+      "to_node": "c-lane-3n",
+      "travel_min_s": 21,
+      "travel_max_s": 25,
+      "bidirectional": true,
+      "distance_m": 30.0
+    },
+    {
+      "from_node": "c-main-01",
+      "to_node": "c-lane-1s",
+      "travel_min_s": 25,
+      "travel_max_s": 30,
+      "bidirectional": true,
+      "distance_m": 35.0
+    },
+    {
+      "from_node": "c-main-02",
+      "to_node": "c-lane-2s",
+      "travel_min_s": 25,
+      "travel_max_s": 30,
+      "bidirectional": true,
+      "distance_m": 35.0
+    },
+    {
+      "from_node": "c-main-03",
+      "to_node": "c-lane-3s",
+      "travel_min_s": 25,
+      "travel_max_s": 30,
+      "bidirectional": true,
+      "distance_m": 35.0
+    },
+    {
+      "from_node": "c-lane-1n",
+      "to_node": "c-back-01",
+      "travel_min_s": 28,
+      "travel_max_s": 34,
+      "bidirectional": true,
+      "distance_m": 40.0
+    },
+    {
+      "from_node": "c-lane-2n",
+      "to_node": "c-back-02",
+      "travel_min_s": 28,
+      "travel_max_s": 34,
+      "bidirectional": true,
+      "distance_m": 40.0
+    },
+    {
+      "from_node": "c-lane-3n",
+      "to_node": "c-back-03",
+      "travel_min_s": 28,
+      "travel_max_s": 34,
+      "bidirectional": true,
+      "distance_m": 40.0
+    },
+    {
+      "from_node": "c-back-01",
+      "to_node": "c-back-02",
+      "travel_min_s": 42,
+      "travel_max_s": 50,
+      "bidirectional": true,
+      "distance_m": 60.0
+    },
+    {
+      "from_node": "c-back-02",
+      "to_node": "c-back-03",
+      "travel_min_s": 42,
+      "travel_max_s": 50,
+      "bidirectional": true,
+      "distance_m": 60.0
+    },
+    {
+      "from_node": "c-lane-1s",
+      "to_node": "c-lane-2s",
+      "travel_min_s": 92,
+      "travel_max_s": 109,
+      "bidirectional": true,
+      "distance_m": 130.0
+    },
+    {
+      "from_node": "c-lane-2s",
+      "to_node": "c-lane-3s",
+      "travel_min_s": 92,
+      "travel_max_s": 109,
+      "bidirectional": true,
+      "distance_m": 130.0
+    },
+    {
+      "from_node": "c-back-02",
+      "to_node": "s-fence-n",
+      "travel_min_s": 14,
+      "travel_max_s": 17,
+      "bidirectional": true,
+      "distance_m": 20.0
+    },
+    {
+      "from_node": "c-park-01",
+      "to_node": "s-fence-e",
+      "travel_min_s": 25,
+      "travel_max_s": 30,
+      "bidirectional": true,
+      "distance_m": 35.0
+    },
+    {
+      "from_node": "c-lane-2s",
+      "to_node": "s-fence-s",
+      "travel_min_s": 39,
+      "travel_max_s": 46,
+      "bidirectional": true,
+      "distance_m": 55.0
+    },
+    {
+      "from_node": "c-park-01",
+      "to_node": "s-club-01",
+      "travel_min_s": 25,
+      "travel_max_s": 30,
+      "bidirectional": true,
+      "distance_m": 35.0
+    }
+  ]
+}
