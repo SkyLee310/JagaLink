@@ -1,5 +1,6 @@
 from collections import Counter
 from typing import Self
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -7,6 +8,58 @@ from app.db.models import NodeKind, NodeStatus, ZoneKind
 from app.schemas.common import Code
 
 Point = tuple[float, float]
+
+
+class CommunityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    map_image_url: str | None
+    scale_m_per_px: float
+    timezone: str
+
+
+class ZoneOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    name: str
+    kind: ZoneKind
+    polygon: list[Point]
+
+
+class NodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    kind: NodeKind
+    name: str
+    x: float
+    y: float
+    heading_deg: float
+    status: NodeStatus
+    zone_id: UUID | None
+
+
+class LinkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    from_node_id: UUID
+    to_node_id: UUID
+    travel_min_s: int
+    travel_max_s: int
+    bidirectional: bool
+
+
+class LayoutOut(BaseModel):
+    community: CommunityOut
+    zones: list[ZoneOut]
+    nodes: list[NodeOut]
+    links: list[LinkOut]
 
 
 class LayoutFileCommunity(BaseModel):

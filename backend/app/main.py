@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.errors import install_error_handlers
 from app.core.settings import get_settings
-from app.routers import health
+from app.routers import health, layout, session
 
 
 def create_app() -> FastAPI:
@@ -25,7 +25,8 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
 
     api = APIRouter(prefix="/api/v1")
-    api.include_router(health.router)
+    for module in (health, session, layout):
+        api.include_router(module.router)
     app.include_router(api)
     return app
 

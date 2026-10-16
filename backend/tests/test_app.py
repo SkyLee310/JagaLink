@@ -1,7 +1,12 @@
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.core.settings import get_settings
 from app.main import create_app
+
+OPENAPI_FILE = Path(__file__).resolve().parents[1] / "openapi.json"
 
 
 def preflight(client: TestClient, origin: str):
@@ -40,3 +45,9 @@ def test_unexpected_errors_use_the_error_body() -> None:
         "message": "Something went wrong on the server",
         "details": None,
     }
+
+
+def test_committed_openapi_matches_the_app() -> None:
+    committed = json.loads(OPENAPI_FILE.read_text(encoding="utf-8"))
+    current = json.loads(json.dumps(create_app().openapi()))
+    assert current == committed, "backend/openapi.json is stale: run make types (D-42)"

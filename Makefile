@@ -1,6 +1,6 @@
 # JagaLink tasks. Recipes stay plain `cd dir && command`, so they run in Git Bash, cmd and CI.
 
-.PHONY: install db migrate seed seed-reset test lint dev-api
+.PHONY: install db migrate seed seed-reset test lint types dev-api
 
 install:
 	cd backend && uv sync
@@ -23,6 +23,10 @@ test: db
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
+
+# Rerun after every API change: backend/openapi.json is committed and CI checks it (D-42).
+types:
+	cd backend && uv run python -m app.openapi_export openapi.json
 
 dev-api: seed
 	cd backend && uv run uvicorn app.main:app --reload --port 8000
