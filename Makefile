@@ -1,9 +1,20 @@
 # JagaLink tasks. Recipes stay plain `cd dir && command`, so they run in Git Bash, cmd and CI.
 
-.PHONY: install db migrate seed seed-reset test lint types dev-api
+.PHONY: install dev dev-api dev-web db migrate seed seed-reset test lint build types eval demo
 
 install:
 	cd backend && uv sync
+	cd frontend && pnpm install
+
+# API on :8000 and the web app on :5173, side by side.
+dev:
+	$(MAKE) -j 2 dev-api dev-web
+
+dev-api: seed
+	cd backend && uv run uvicorn app.main:app --reload --port 8000
+
+dev-web:
+	cd frontend && pnpm dev
 
 db:
 	docker compose up -d --wait db
@@ -20,13 +31,22 @@ seed-reset: migrate
 
 test: db
 	cd backend && uv run pytest
+	cd frontend && pnpm test
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
+	cd frontend && pnpm lint && pnpm typecheck
 
-# Rerun after every API change: backend/openapi.json is committed and CI checks it (D-42).
+build:
+	cd frontend && pnpm build
+
+# Rerun after every API change: both files are committed and CI checks them (D-42).
 types:
 	cd backend && uv run python -m app.openapi_export openapi.json
+	cd frontend && pnpm types
 
-dev-api: seed
-	cd backend && uv run uvicorn app.main:app --reload --port 8000
+eval:
+	@echo make eval arrives with F8 in M6
+
+demo:
+	@echo make demo arrives with the Playwright demo script in M6
