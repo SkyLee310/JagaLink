@@ -1,0 +1,20 @@
+# Local Postgres for `make dev` and `make test`.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jagalink
+      POSTGRES_PASSWORD: jagalink
+      POSTGRES_DB: jagalink
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jagalink -d jagalink"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:
