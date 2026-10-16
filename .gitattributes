@@ -1,0 +1,6 @@
+# LF everywhere: the Makefile, shell steps and generated files break or churn on CRLF
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

@@ -1,0 +1,30 @@
+# Secrets: commit only the .env.example files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code per-user settings
+.claude/settings.local.json
