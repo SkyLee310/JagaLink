@@ -240,7 +240,7 @@ early-warning/
       scenarios/                scripted scenarios and truth paths
       video/                    source and licence notes (clips stay out of git)
     tests/                      unit tests and golden-file scenario tests
-    Dockerfile  railway.json  pyproject.toml  openapi.json
+    Dockerfile  pyproject.toml  openapi.json
     .env.example                DATABASE_URL, GOOGLE credentials, FRONTEND_ORIGIN
 
   docs/                         PRD, this spec, demo script
@@ -248,6 +248,8 @@ early-warning/
   Makefile                      dev, test, seed, eval, types, demo
   .github/workflows/            frontend.yml, backend.yml (run on every PR; each skips its tests when its folder is unchanged)
 ```
+
+The Railway backend service keeps its settings on the service, not in a `railway.json` (new Railway services cannot use config files): root directory `/backend`, so it builds from `backend/Dockerfile`; health check `/api/v1/health`; restart on failure. Set them by hand whenever the service is recreated.
 
 ## 8. Milestones (Vertical Slices)
 

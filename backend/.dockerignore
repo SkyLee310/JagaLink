@@ -1,0 +1,12 @@
+# The image holds only what the API needs at runtime.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+tests/
+openapi.json
+Dockerfile
+.dockerignore
