@@ -22,8 +22,8 @@ When docs conflict, DECISIONS wins, then PRD for product behaviour and TECH_SPEC
 | Layer | Choice |
 |---|---|
 | Frontend (`frontend/`, Vercel) | React 19, TypeScript, Vite, Tailwind, TanStack Query, Zustand, react-konva |
-| Backend (`backend/`, Railway) | Python 3.12, FastAPI, Pydantic v2, uvicorn, networkx |
-| Database (Railway) | PostgreSQL 16, SQLAlchemy 2, Alembic |
+| Backend (`backend/`, Google Cloud Run) | Python 3.12, FastAPI, Pydantic v2, uvicorn, networkx |
+| Database (Neon) | PostgreSQL 16, SQLAlchemy 2, Alembic |
 | Realtime | Server-Sent Events via a fetch-based client that sends the bearer token |
 | Agent (F7) | Google Vertex AI (Gemini, model per PRD Q6), google-genai SDK, function calling, JSON-schema output |
 | Should phase only | F10: Ultralytics YOLO, ByteTrack, OpenCV, ffmpeg · F13: pandas, scikit-learn |
@@ -59,7 +59,7 @@ Prerequisites: Docker, uv, Node with pnpm, GNU make (Windows: `winget install ez
 - **API shape.** REST under `/api/v1`; ISO-8601 timestamps with milliseconds; errors as `{code, message, details}` (409 duplicate link, 422 self-link or malformed event); role checks on the server.
 - **Generated types.** Frontend API types come from `make types`; rerun it after every API change and commit `backend/openapi.json` with the regenerated types (CI fails when either is stale).
 - **Feature folders.** Frontend code lives in `frontend/src/features/<feature>/`; the API base URL comes from `VITE_API_URL`.
-- **Server-side secrets.** Google credentials live only in the backend env (`.env`, Railway secrets); commit `.env.example` with placeholders.
+- **Server-side secrets.** Google credentials stay on the server: the deployed API runs as its Cloud Run service account, and local runs use `gcloud auth application-default login`. Other secrets live in `.env` and Secret Manager; commit `.env.example` with placeholders.
 - **Tests.** Engine functions get pytest unit tests; each scenario has golden expected paths, alerts and timeline entries in `backend/data/scenarios/`. Change a golden file only for an intended behaviour change, and say so in the commit.
 - **Traceable commits.** Prefix the type and the feature or milestone ID: `feat(F3): join tracks inside the walking window`.
 
