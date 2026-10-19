@@ -34,7 +34,7 @@ Python backend, React frontend, PostgreSQL, Google Cloud for hosting and the age
 | Learned baseline (Should, F13) | pandas, scikit-learn | Per-camera, per-hour counts and transitions; no deep model needed |
 | Tests | pytest, Vitest, Playwright | Unit tests on pure logic; Playwright follows the demo script |
 | Tooling | uv (Python), pnpm, Docker Compose, GitHub Actions | One command to run locally; CI blocks merges that break tests |
-| Hosting | Frontend on Vercel; backend and PostgreSQL on Railway | Two independent deploys, each with its own URL and environment variables; the backend calls Vertex AI with a service-account key |
+| Hosting | Frontend on Vercel; backend on Google Cloud Run; PostgreSQL on Neon | Two independent deploys, each with its own URL and environment variables; the backend calls Vertex AI as its Cloud Run service account, so no key is stored |
 
 ## 3. System Architecture
 
@@ -187,7 +187,7 @@ Only Google Cloud is required for the Must features. Everything else is open-sou
 | Service | Used for | Needed by | Watch out for |
 |---|---|---|---|
 | Google Vertex AI (Gemini) | Severity, reason, incident timeline | F7 | Needs a GCP project with billing and model quota; set a timeout and a rule-only fallback so a slow call never blocks an alert. Model choice, cost and latency are PRD Q6 |
-| Railway (backend and PostgreSQL), Vercel (frontend) | Hosting the API and database (Railway) and the web app (Vercel) | All | Check plan limits, and that long-lived SSE connections stay open. Vertex AI is on Google Cloud while the backend is not, so store the Google service-account key as a Railway secret |
+| Google Cloud Run (backend), Neon (PostgreSQL), Vercel (frontend) | Hosting the API (Cloud Run), the database (Neon) and the web app (Vercel) | All | Cloud Run keeps one instance, because SSE fan-out lives in memory (D-77), and its 60-minute request timeout ends each SSE stream, so the client reconnects. After idle time the first request waits a few seconds for a cold start, and Neon's free plan suspends the database after 5 idle minutes; the next query wakes it in about a second |
 | GitHub and GitHub Actions | Repo, CI | All | CI must run the golden scenario tests |
 | Ultralytics YOLO, ByteTrack | Detect and track people and vehicles in public video | F10, F13 | YOLO is AGPL-3.0; fine for a competition prototype, review before any commercial use |
 | Public city video sources | Real footage for F10 and F13 | F10, F13 | Licence must allow use in a competition demo (PRD Q4); keep a source and licence note per clip |
@@ -196,7 +196,7 @@ Only Google Cloud is required for the Must features. Everything else is open-sou
 
 ## 7. Folder Structure
 
-One repo, two independent apps. `frontend/` deploys to Vercel; `backend/` deploys to Railway together with its PostgreSQL. They share nothing but the API: the backend publishes `openapi.json` (committed as `backend/openapi.json`) and the frontend generates its types from it (`make types`); CI fails when either is stale. The evaluation runner lives in `backend/`, so the demo and the report run the same engine.
+One repo, two independent apps. `frontend/` deploys to Vercel; `backend/` deploys to Google Cloud Run and keeps its PostgreSQL on Neon. They share nothing but the API: the backend publishes `openapi.json` (committed as `backend/openapi.json`) and the frontend generates its types from it (`make types`); CI fails when either is stale. The evaluation runner lives in `backend/`, so the demo and the report run the same engine.
 
 ```text
 early-warning/
@@ -215,7 +215,7 @@ early-warning/
     e2e/                        Playwright, follows the demo script
     .env.example                VITE_API_URL
     package.json  vite.config.ts  vercel.json
-  backend/                      Python 3.12 + FastAPI, deployed to Railway
+  backend/                      Python 3.12 + FastAPI, deployed to Cloud Run
     app/
       main.py                   app setup, CORS for the frontend origin only
       routers/                  layout, scenarios, events, tracks, alerts, rules, stream, eval, admin
@@ -249,7 +249,14 @@ early-warning/
   .github/workflows/            frontend.yml, backend.yml (run on every PR; each skips its tests when its folder is unchanged)
 ```
 
-The Railway backend service keeps its settings on the service, not in a `railway.json` (new Railway services cannot use config files): root directory `/backend`, so it builds from `backend/Dockerfile`; health check `/api/v1/health`; restart on failure. Set them by hand whenever the service is recreated.
+The Cloud Run service `jagalink-api` in `asia-southeast1` builds from `backend/Dockerfile` and runs with:
+- at most one instance (D-77);
+- a 3600-second request timeout;
+- a startup probe on `/api/v1/health`;
+- the D-80 service account;
+- `APP_ENV=prod` and `FRONTEND_ORIGIN` as plain variables, and `DATABASE_URL` and `SESSION_SECRET` from Secret Manager.
+
+A Cloud Build trigger redeploys it when `backend/**` changes on `main`. Neon holds PostgreSQL 16 in AWS Singapore (`aws-ap-southeast-1`). `DATABASE_URL` is Neon's direct, unpooled connection string with `sslmode=require`.
 
 ## 8. Milestones (Vertical Slices)
 
@@ -274,7 +281,7 @@ Each milestone is a slice that runs from the screen down to the database and can
 **M0. Walking skeleton.**
 
 - Slice: open the URL, pick Guard or Supervisor, see the seeded community map from the database.
-- Build: monorepo, Docker Compose, Alembic migration and seed (community, 20 nodes, links, users); `POST /session`, `GET /layout`; Vite page with the role picker and a read-only map; CI; first deploys of the backend to Railway and the frontend to Vercel, with CORS and the API URL configured.
+- Build: monorepo, Docker Compose, Alembic migration and seed (community, 20 nodes, links, users); `POST /session`, `GET /layout`; Vite page with the role picker and a read-only map; CI; first deploys of the backend to Cloud Run (database on Neon) and the frontend to Vercel, with CORS and the API URL configured.
 - Done when: the deployed URL shows the seeded map on a laptop and a phone.
 
 **M1. Draw and keep a layout (F1).**

@@ -30,7 +30,7 @@ Needs: D-66, D-69, D-75, D-76, D-78, D-81.
 | M0.7 | Role picker and read-only map: choose a seeded user, then see nodes, links and zones in react-konva over the background. | Locally, both roles reach the 20-node map. | | ⬜ |
 | M0.8 | Makefile: `dev`, `seed`, `test`, `lint`, `build`, `types` (`eval` and `demo` as stubs). | Every target runs in Git Bash on Windows and in CI. | | ⬜ |
 | M0.9 | CI: `backend.yml` (ruff, pytest with a Postgres service, stale `openapi.json` check) and `frontend.yml` (oxlint, tsc, Vitest, build, stale types check); both skip their tests when their folder is unchanged (D-48); branch protection on `main` requires both. | Both workflows are green on `main`, and a docs-only PR can merge. | | ⬜ |
-| M0.10 | Deploy: backend + Postgres to Railway (migrate and seed on deploy); frontend to Vercel with `VITE_API_URL`; CORS locked to the Vercel origin. | The deployed URL shows the seeded map on a laptop and a phone. | | ⬜ |
+| M0.10 | Deploy (D-47): backend to Cloud Run with PostgreSQL 16 on Neon (migrate and seed on start); frontend to Vercel with `VITE_API_URL`; CORS locked to the Vercel origin. | The deployed URL shows the seeded map on a laptop and a phone. | | ⬜ |
 
 ### M1 · Draw and keep a layout (F1) — target Sun 18 Oct
 
@@ -123,8 +123,8 @@ Needs: D-68, D-72, D-73.
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
 | H1 | (human) Register the team. | Registered before registration closes on 21 Oct. | | ⬜ |
-| H2 | (human) Railway, Vercel and GitHub accounts ready for M0.10. | All three can deploy from this repo. | | ⬜ |
-| H3 | (human) Google Cloud setup (D-80). | Key stored in Railway and the local `.env` by 20 Oct. | | ⬜ |
+| H2 | (human) Neon, Vercel and GitHub accounts ready for M0.10; Google Cloud billing comes with H3. | A Neon project exists, and Cloud Build and Vercel can deploy from this repo. | | ⬜ |
+| H3 | (human) Google Cloud setup (D-80). | Vertex AI is enabled and the API's service account has the Vertex AI User role by 20 Oct. | | ⬜ |
 
 ## Phase 2 — after the Top 10 (28 Oct), final submission 11 Nov
 
