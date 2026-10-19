@@ -1,5 +1,5 @@
-# JagaLink API image for Railway (D-47): migrate, load the seed community if it is missing,
-# then serve on $PORT. Railway's health check calls /api/v1/health.
+# JagaLink API image for Cloud Run (D-47): migrate, load the seed community if it is missing,
+# then serve on $PORT. Cloud Run's startup probe calls /api/v1/health.
 FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /usr/local/bin/uv

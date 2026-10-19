@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Health
-         * @description Liveness for Railway: 200 when the database answers, 503 when it does not.
+         * @description Health probe: 200 when the database answers, 503 when it does not.
          */
         get: operations["health_api_v1_health_get"];
         put?: never;
