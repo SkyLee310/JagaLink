@@ -76,12 +76,144 @@ export interface paths {
          * @description Zones, nodes and links of one community in a single response (F1).
          */
         get: operations["get_layout_api_v1_communities__community_id__layout_get"];
+        /**
+         * Save Layout
+         * @description Save the whole layout in one transaction (F1). Zones stay as seeded (D-64).
+         *
+         *     A self-link, an unknown node or zone, or a bad walking-time window answers 422; a duplicate
+         *     link (D-65) or node code answers 409. Nothing is saved unless the whole layout is valid.
+         */
+        put: operations["save_layout_api_v1_communities__community_id__layout_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{community_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Layout
+         * @description The layout as a file, with codes instead of IDs (D-75).
+         */
+        get: operations["export_layout_api_v1_communities__community_id__export_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communities/{community_id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Layout
+         * @description Replace the layout with a file's; zones and nodes with the same code keep their IDs.
+         */
+        post: operations["import_layout_api_v1_communities__community_id__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Node
+         * @description Add a camera or sensor to the supervisor's community.
+         */
+        post: operations["create_node_api_v1_nodes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Node
+         * @description Delete a node and every link that touches it.
+         */
+        delete: operations["delete_node_api_v1_nodes__node_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Node
+         * @description Change some of a node's fields; `status: offline` marks a blind spot (F9).
+         */
+        patch: operations["update_node_api_v1_nodes__node_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Link
+         * @description Link two nodes of the supervisor's community with a walking-time window.
+         */
+        post: operations["create_link_api_v1_links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Link */
+        delete: operations["delete_link_api_v1_links__link_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Link
+         * @description Change a link's walking times, direction or distance.
+         */
+        patch: operations["update_link_api_v1_links__link_id__patch"];
         trace?: never;
     };
 }
@@ -95,6 +227,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Code */
+            code: string;
             /** Name */
             name: string;
             /** Map Image Url */
@@ -116,6 +250,11 @@ export interface components {
             /** Details */
             details?: unknown;
         };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** HealthOut */
         HealthOut: {
             /**
@@ -129,6 +268,117 @@ export interface components {
              */
             db: "ok" | "down";
         };
+        /**
+         * LayoutFile
+         * @description A community layout as a file. References are codes, never database IDs (D-75).
+         */
+        LayoutFile: {
+            community: components["schemas"]["LayoutFileCommunity"];
+            /** Zones */
+            zones: components["schemas"]["LayoutFileZone"][];
+            /** Nodes */
+            nodes: components["schemas"]["LayoutFileNode"][];
+            /** Links */
+            links: components["schemas"]["LayoutFileLink"][];
+            /**
+             * Normal Routes
+             * @default []
+             */
+            normal_routes: components["schemas"]["NormalRoute"][];
+        };
+        /** LayoutFileCommunity */
+        LayoutFileCommunity: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Map Image Url */
+            map_image_url?: string | null;
+            /** Scale M Per Px */
+            scale_m_per_px: number;
+            /**
+             * Timezone
+             * @default Asia/Kuala_Lumpur
+             */
+            timezone: string;
+        };
+        /** LayoutFileLink */
+        LayoutFileLink: {
+            /** From Node */
+            from_node: string;
+            /** To Node */
+            to_node: string;
+            /** Travel Min S */
+            travel_min_s: number;
+            /** Travel Max S */
+            travel_max_s: number;
+            /**
+             * Bidirectional
+             * @default true
+             */
+            bidirectional: boolean;
+            /**
+             * Distance M
+             * @description Walking distance along the streets (D-69)
+             */
+            distance_m?: number | null;
+        };
+        /** LayoutFileNode */
+        LayoutFileNode: {
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "camera" | "sensor";
+            /** Name */
+            name: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Heading Deg
+             * @default 0
+             */
+            heading_deg: number;
+            /**
+             * Status
+             * @default online
+             * @enum {string}
+             */
+            status: "online" | "offline";
+            /** Zone */
+            zone?: string | null;
+        };
+        /** LayoutFileZone */
+        LayoutFileZone: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "street" | "gate" | "lane";
+            /** Polygon */
+            polygon: [
+                number,
+                number
+            ][];
+        };
+        /**
+         * LayoutIn
+         * @description The whole editable layout, saved in one transaction (PUT /communities/{id}/layout).
+         */
+        LayoutIn: {
+            /** Nodes */
+            nodes: components["schemas"]["NodeIn"][];
+            /** Links */
+            links: components["schemas"]["LinkIn"][];
+        };
         /** LayoutOut */
         LayoutOut: {
             community: components["schemas"]["CommunityOut"];
@@ -138,6 +388,32 @@ export interface components {
             nodes: components["schemas"]["NodeOut"][];
             /** Links */
             links: components["schemas"]["LinkOut"][];
+        };
+        /** LinkIn */
+        LinkIn: {
+            /** Id */
+            id?: string | null;
+            /**
+             * From Node Id
+             * Format: uuid
+             */
+            from_node_id: string;
+            /**
+             * To Node Id
+             * Format: uuid
+             */
+            to_node_id: string;
+            /** Travel Min S */
+            travel_min_s: number;
+            /** Travel Max S */
+            travel_max_s: number;
+            /**
+             * Bidirectional
+             * @default true
+             */
+            bidirectional: boolean;
+            /** Distance M */
+            distance_m?: number | null;
         };
         /** LinkOut */
         LinkOut: {
@@ -162,6 +438,90 @@ export interface components {
             travel_max_s: number;
             /** Bidirectional */
             bidirectional: boolean;
+            /** Distance M */
+            distance_m: number | null;
+        };
+        /**
+         * LinkPatch
+         * @description Only the fields sent change. The ends of a link are fixed: delete it and add another.
+         */
+        LinkPatch: {
+            /** Travel Min S */
+            travel_min_s?: number | null;
+            /** Travel Max S */
+            travel_max_s?: number | null;
+            /** Bidirectional */
+            bidirectional?: boolean | null;
+            /** Distance M */
+            distance_m?: number | null;
+        };
+        /** NodeCreate */
+        NodeCreate: {
+            /** Id */
+            id?: string | null;
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "camera" | "sensor";
+            /** Name */
+            name: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Heading Deg
+             * @default 0
+             */
+            heading_deg: number;
+            /**
+             * Status
+             * @default online
+             * @enum {string}
+             */
+            status: "online" | "offline";
+            /** Zone Id */
+            zone_id?: string | null;
+        };
+        /**
+         * NodeIn
+         * @description A node in a saved layout. A new node's ID comes from the client, so links can name it.
+         */
+        NodeIn: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "camera" | "sensor";
+            /** Name */
+            name: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Heading Deg
+             * @default 0
+             */
+            heading_deg: number;
+            /**
+             * Status
+             * @default online
+             * @enum {string}
+             */
+            status: "online" | "offline";
+            /** Zone Id */
+            zone_id?: string | null;
         };
         /** NodeOut */
         NodeOut: {
@@ -192,6 +552,38 @@ export interface components {
             status: "online" | "offline";
             /** Zone Id */
             zone_id: string | null;
+        };
+        /**
+         * NodePatch
+         * @description Only the fields sent change; `zone_id: null` clears the zone.
+         */
+        NodePatch: {
+            /** Code */
+            code?: string | null;
+            /** Kind */
+            kind?: ("camera" | "sensor") | null;
+            /** Name */
+            name?: string | null;
+            /** X */
+            x?: number | null;
+            /** Y */
+            y?: number | null;
+            /** Heading Deg */
+            heading_deg?: number | null;
+            /** Status */
+            status?: ("online" | "offline") | null;
+            /** Zone Id */
+            zone_id?: string | null;
+        };
+        /**
+         * NormalRoute
+         * @description A route residents normally take, as node codes in walking order (D-53).
+         */
+        NormalRoute: {
+            /** Name */
+            name: string;
+            /** Nodes */
+            nodes: string[];
         };
         /** SessionIn */
         SessionIn: {
@@ -235,6 +627,19 @@ export interface components {
             role: "guard" | "supervisor";
             /** On Duty */
             on_duty: boolean;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** ZoneOut */
         ZoneOut: {
@@ -398,6 +803,571 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    save_layout_api_v1_communities__community_id__layout_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LayoutIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    export_layout_api_v1_communities__community_id__export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutFile"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    import_layout_api_v1_communities__community_id__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                community_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LayoutFile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_node_api_v1_nodes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NodeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_node_api_v1_nodes__node_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_node_api_v1_nodes__node_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NodePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    create_link_api_v1_links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    delete_link_api_v1_links__link_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_link_api_v1_links__link_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

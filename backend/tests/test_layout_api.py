@@ -51,7 +51,7 @@ def test_layout_of_own_community(client: TestClient, seeded: SeedReport, code: s
 def test_layout_of_another_community_is_forbidden(
     client: TestClient, db: Session, seeded: SeedReport
 ) -> None:
-    other = Community(name="Taman Lain", scale_m_per_px=0.5)
+    other = Community(code="taman-lain", name="Taman Lain", scale_m_per_px=0.5)
     db.add(other)
     db.flush()
     response = get_layout(client, other.id, token_for(client))

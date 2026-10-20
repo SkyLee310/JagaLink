@@ -55,3 +55,39 @@ One entry per milestone or working session, newest last: what changed, the imple
    - Deploy: `gcloud run deploy jagalink-api --source <dir>/backend --region asia-southeast1 --project jagalink-hackathon --service-account jagalink-api@jagalink-hackathon.iam.gserviceaccount.com --max-instances 1 --timeout 3600 --set-env-vars APP_ENV=prod,FRONTEND_ORIGIN=<Vercel production URL> --set-secrets DATABASE_URL=database-url:latest,SESSION_SECRET=session-secret:latest --allow-unauthenticated`.
    - Add a startup probe on `/api/v1/health`.
 4. Check the seeded map at the Vercel URL on a laptop and a phone.
+
+## 2026-10-20 · M1 draw and keep a layout (F1)
+
+**Status.** M1.1–M1.7 done (PR #5). The deployed check waits on M0.10, like every milestone.
+
+**What changed**
+- Backend:
+  - a pure layout checker, `app/engine/layout.py`;
+  - `PUT /communities/{id}/layout` saves the whole layout in one transaction;
+  - `POST`, `PATCH` and `DELETE` on `/nodes` and `/links`, plus `GET …/export` and `POST …/import`; every write is supervisor-only (D-66);
+  - migration `0002` adds `community.code`, `community.normal_routes` and `link.distance_m`.
+- Frontend: `/editor` for supervisors, with:
+  - a Konva canvas with select, camera, sensor and link tools, dragging and a heading handle;
+  - a properties panel;
+  - save, reload, export, import and clear, an unsaved-changes marker and keyboard shortcuts;
+  - server refusals listed on screen.
+- Browser check (local API on PostgreSQL 16, 1366 × 768): a camera was added, renamed, turned, dragged and linked, and the self-link and duplicate attempts were refused. After a save and a page refresh the layout was identical; the camera was then deleted and Ctrl+S saved the result.
+- M1.7: a scripted click-through in the browser built 20 cameras and 23 links from blank and saved them in 1.9 s (69 clicks). At about 3 s per click a person needs about 3.5 min, inside the 5-minute target. A hand-timed run is still worth doing before the recording.
+
+**Implementation decisions**
+- A save answers 409 when every problem is a duplicate (code or link), else 422; `details.problems` lists every problem.
+- The client generates node and link UUIDs. A save upserts nodes by ID, so events and users keep pointing at them; renamed codes first move to `~{id}`, so two nodes can swap codes; normal routes follow renames.
+- Import matches nodes by code; export writes codes only (D-75), in a canonical order, so export → import → export is identical.
+- A new link gets walking times from the straight-line distance: `floor(d / 1.4)` to `ceil(d / 1.2)` seconds, like the seed. A link that reverses a one-way link is added as one-way, with a notice (D-65).
+- A node takes the zone under it when it is placed or dropped.
+- Notices float over the map, so the map keeps its size and nodes stay under the pointer.
+
+**⚠️ Traps**
+- Docker Desktop fails to start on this machine: `%LOCALAPPDATA%\Docker\run` holds stale sockets. Quit Docker, then delete that folder or reboot.
+- Until Docker is fixed, the EDB PostgreSQL 16 Windows binaries (a zip, no installer) do the job:
+  1. `initdb -U jagalink --pwfile=<file holding jagalink>`;
+  2. run `postgres -D <data dir> -p 5432`;
+  3. `CREATE DATABASE jagalink`.
+  `make db`, `make seed` and `make test` call Docker, so run their inner commands instead, e.g. `cd backend && uv run alembic upgrade head`.
+- Every layout write must be checked against the community's zones. An empty zone list fails every zoned node with `unknown_zone`; CI caught this in PR #5.
+- The browser pane's screenshot can show a frame from before the last clicks. Read the DOM, or take a second screenshot, before calling something a bug.

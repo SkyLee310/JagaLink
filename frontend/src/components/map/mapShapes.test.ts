@@ -16,12 +16,13 @@ function node(id: string, x: number, y: number, extra: Partial<LayoutNode> = {})
 
 function link(id: string, from: string, to: string, bidirectional: boolean): LayoutLink {
   const travel = { travel_min_s: 21, travel_max_s: 25 }
-  return { id, from_node_id: from, to_node_id: to, bidirectional, ...travel }
+  return { id, from_node_id: from, to_node_id: to, bidirectional, distance_m: null, ...travel }
 }
 
 const LAYOUT: Layout = {
   community: {
     id: 'c1',
+    code: 'taman-ujian',
     name: 'Taman Ujian',
     map_image_url: null,
     scale_m_per_px: 0.25,

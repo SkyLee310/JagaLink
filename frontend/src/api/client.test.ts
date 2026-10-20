@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { useSession } from '../lib/session'
 import { jsonResponse } from '../test/http'
-import { API_URL, ApiError, apiFetch } from './client'
+import { API_URL, ApiError, apiFetch, errorLines } from './client'
 import type { Session } from './types'
 
 const SESSION: Session = {
@@ -51,5 +51,33 @@ describe('apiFetch', () => {
       status: 0,
       code: 'network_error',
     })
+  })
+})
+
+describe('errorLines', () => {
+  it('lists every layout problem (D-40 details)', () => {
+    const problems = [
+      { code: 'self_link', message: 'link c-a -> c-a joins a node to itself' },
+      { code: 'unknown_node', message: 'link c-a -> x names unknown node x' },
+    ]
+    const error = new ApiError(422, 'self_link', 'link c-a -> c-a … (and 1 more)', { problems })
+    expect(errorLines(error)).toEqual(problems.map((problem) => problem.message))
+  })
+
+  it('names the field of each malformed value', () => {
+    const details = [
+      { loc: ['body', 'links', 0, 'travel_min_s'], msg: 'Input should be greater than 0' },
+      { loc: ['body'], msg: 'Value error, link c-a -> c-b duplicates another link' },
+    ]
+    const error = new ApiError(422, 'validation_error', 'The request is malformed', details)
+    expect(errorLines(error)).toEqual([
+      'links.0.travel_min_s: Input should be greater than 0',
+      'link c-a -> c-b duplicates another link',
+    ])
+  })
+
+  it('has nothing to add for other errors', () => {
+    expect(errorLines(new Error('boom'))).toEqual([])
+    expect(errorLines(new ApiError(0, 'network_error', 'Cannot reach the JagaLink server'))).toEqual([])
   })
 })

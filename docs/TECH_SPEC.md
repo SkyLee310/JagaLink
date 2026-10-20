@@ -97,10 +97,10 @@ PostgreSQL holds events, tracks, alerts and timelines. The agent reads it only t
 
 | Entity | Key fields | Notes |
 |---|---|---|
-| community | name, map_image_url, scale_m_per_px, timezone, normal_routes (jsonb) | One seeded community for the prototype; `normal_routes` holds named node-code sequences for the off-route rule and next-camera scoring (D-53) |
+| community | code, name, map_image_url, scale_m_per_px, timezone, normal_routes (jsonb) | One seeded community for the prototype; `code` is the slug its layout file carries (D-75); `normal_routes` holds named node-code sequences for the off-route rule and next-camera scoring (D-53) |
 | zone | community_id, code, name, kind (street, gate, lane), polygon | Used by loitering and after-hours rules; `code` is unique per community (D-75) |
 | node | community_id, code, kind (camera, sensor), name, x, y, heading_deg, status (online, offline), zone_id | Offline status drives F9; `code` is unique per community (D-75) |
-| link | community_id, from_node_id, to_node_id, travel_min_s, travel_max_s, bidirectional | Unique on (from, to); check from is not to (F1 rejects self and duplicate links) |
+| link | community_id, from_node_id, to_node_id, travel_min_s, travel_max_s, bidirectional, distance_m | Unique on (from, to); check from is not to (F1 rejects self and duplicate links); `distance_m` is the walking distance, shown in the next-camera basis (D-20) |
 | app_user | community_id, code, name, role (guard, supervisor), on_duty, current_node_id | Seeded; the role picker uses this table; `code` is unique per community (D-75); a run sets `on_duty` and `current_node_id` from its scenario's roster (D-58) |
 | scenario | community_id, code, name, description, script_path, duration_s | Ground truth — true path, expected alerts and timeline — stays in the script file, never in the database (D-70) |
 | scenario_run | scenario_id, mode (live, eval), speed, state, started_at | One row per playback or evaluation |

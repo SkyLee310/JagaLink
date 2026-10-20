@@ -10,7 +10,6 @@ Add a row before you start editing; remove it when you finish.
 
 | Owner | Task | Files | Since |
 |---|---|---|---|
-| | | | |
 
 ## Phase 1 — proposal submission, 23 Oct
 
@@ -39,13 +38,13 @@ Needs: D-63, D-64, D-65.
 
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
-| M1.1 | Layout validation: self-link → 422, duplicate → 409 (direction rule D-65), `0 < travel_min_s ≤ travel_max_s`, unknown node → 422. | Unit tests cover every rejection. | | ⬜ |
-| M1.2 | `PUT /communities/{id}/layout` in one transaction, plus `POST/PATCH/DELETE` for `/nodes` and `/links`; supervisor only. | API tests: a saved layout reads back identical; 409, 422 and a guard's 403 return the D-40 body. | | ⬜ |
-| M1.3 | JSON export and import (`GET …/export`, `POST …/import`). | Export → import → export gives an identical file. | | ⬜ |
-| M1.4 | Editor canvas: add, drag and delete cameras and sensors; set heading; properties panel (name, code, kind, zone per D-64). | Each action works in the browser and survives a save. | | ⬜ |
-| M1.5 | Link tool: pick node A, then B, enter min and max walking time; server errors show as a visible message. | A self-link and a duplicate are refused on screen. | | ⬜ |
-| M1.6 | Save, reload, export and import buttons, with an unsaved-changes marker. | After a save and a browser refresh, the layout is identical. | | ⬜ |
-| M1.7 | Timed check: build a 20-node layout from blank. | Done in ≤5 min; time recorded in PROGRESS.md. | | ⬜ |
+| M1.1 | Layout validation: self-link → 422, duplicate → 409 (direction rule D-65), `0 < travel_min_s ≤ travel_max_s`, unknown node → 422. | Unit tests cover every rejection. | @agent-a | ✅ 2026-10-20 |
+| M1.2 | `PUT /communities/{id}/layout` in one transaction, plus `POST/PATCH/DELETE` for `/nodes` and `/links`; supervisor only. | API tests: a saved layout reads back identical; 409, 422 and a guard's 403 return the D-40 body. | @agent-a | ✅ 2026-10-20 |
+| M1.3 | JSON export and import (`GET …/export`, `POST …/import`). | Export → import → export gives an identical file. | @agent-a | ✅ 2026-10-20 |
+| M1.4 | Editor canvas: add, drag and delete cameras and sensors; set heading; properties panel (name, code, kind, zone per D-64). | Each action works in the browser and survives a save. | @agent-a | ✅ 2026-10-20 |
+| M1.5 | Link tool: pick node A, then B, enter min and max walking time; server errors show as a visible message. | A self-link and a duplicate are refused on screen. | @agent-a | ✅ 2026-10-20 |
+| M1.6 | Save, reload, export and import buttons, with an unsaved-changes marker. | After a save and a browser refresh, the layout is identical. | @agent-a | ✅ 2026-10-20 |
+| M1.7 | Timed check: build a 20-node layout from blank. | Done in ≤5 min; time recorded in PROGRESS.md. | @agent-a | ✅ 2026-10-20 |
 
 ### M2 · Play a scenario (F2) — target Mon 19 Oct
 
