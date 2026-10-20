@@ -1,0 +1,203 @@
+{
+  "code": "s2-night-fence",
+  "name": "S2 · Person crossing from the back fence at night",
+  "description": "Just after 02:00 a person is picked up by the north fence sensor, walks the back lane into lane 2 north and stays there about three and a half minutes, then crosses the main road into lane 2 south and is last picked up by the south fence sensor.",
+  "community": "taman-simulasi",
+  "night": {
+    "date": "2026-10-21",
+    "start": "18:00",
+    "end": "06:00"
+  },
+  "live_window": {
+    "start": "02:08",
+    "end": "02:18"
+  },
+  "default_speed": 10,
+  "roster": [
+    {
+      "user": "u-guard-01",
+      "on_duty": true,
+      "node": "c-gate-01"
+    },
+    {
+      "user": "u-guard-02",
+      "on_duty": false,
+      "node": null
+    },
+    {
+      "user": "u-guard-03",
+      "on_duty": true,
+      "node": "c-main-03"
+    }
+  ],
+  "targets": [
+    {
+      "key": "t1",
+      "label": "Person crossing from the back fence",
+      "object_class": "person",
+      "visits": [
+        {
+          "node": "s-fence-n",
+          "at": "02:10:00",
+          "stay_s": 4
+        },
+        {
+          "node": "c-back-02",
+          "after_s": 15.5,
+          "stay_s": 6
+        },
+        {
+          "node": "c-lane-2n",
+          "after_s": 31,
+          "stay_s": 212
+        },
+        {
+          "node": "c-main-02",
+          "after_s": 23,
+          "stay_s": 5
+        },
+        {
+          "node": "c-lane-2s",
+          "after_s": 27.5,
+          "stay_s": 7
+        },
+        {
+          "node": "s-fence-s",
+          "after_s": 42,
+          "stay_s": 3
+        }
+      ]
+    }
+  ],
+  "background": {
+    "seed": 2002,
+    "trips_per_hour": {
+      "18": 16,
+      "19": 14,
+      "20": 12,
+      "21": 10,
+      "22": 6,
+      "23": 3,
+      "00": 2,
+      "01": 1,
+      "02": 1,
+      "03": 0,
+      "04": 1,
+      "05": 4
+    },
+    "vehicle_share": 0.35
+  },
+  "truth": {
+    "first_unusual": {
+      "target": "t1",
+      "visit": 0,
+      "type": "appear"
+    },
+    "expected_alerts": [
+      {
+        "target": "t1",
+        "rule": "after_hours"
+      },
+      {
+        "target": "t1",
+        "rule": "off_route"
+      },
+      {
+        "target": "t1",
+        "rule": "loiter"
+      }
+    ],
+    "expected_timeline": [
+      {
+        "text": "Person in view of sensor s-fence-n.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 0,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 0,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Person in view of camera c-back-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 1,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 1,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Person in view of camera c-lane-2n.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 2,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 2,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Person in view of camera c-main-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 3,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 3,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Person in view of camera c-lane-2s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 4,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 4,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Person in view of sensor s-fence-s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 5,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 5,
+            "type": "disappear"
+          }
+        ]
+      }
+    ]
+  }
+}
