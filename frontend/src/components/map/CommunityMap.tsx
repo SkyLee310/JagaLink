@@ -13,8 +13,21 @@ import {
 } from './mapShapes'
 import { COLORS, LABEL_MIN_SCALE, LABEL_WIDTH, ZONE_COLORS } from './mapTheme'
 
+/** Nodes to light up on the map, by node ID. */
+export interface MapHighlights {
+  /** An object is in view of this camera or sensor. */
+  occupied: ReadonlySet<string>
+  /** An event from this node has just arrived. */
+  flashing: ReadonlySet<string>
+}
+
+interface CommunityMapProps {
+  layout: Layout
+  highlights?: MapHighlights
+}
+
 /** Read-only plan of one community: background, zones, links, cameras and sensors (F1 view). */
-export function CommunityMap({ layout }: { layout: Layout }) {
+export function CommunityMap({ layout, highlights }: CommunityMapProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const scale = fitScale(useElementSize(frameRef))
   const background = useImage(layout.community.map_image_url)
@@ -87,6 +100,16 @@ export function CommunityMap({ layout }: { layout: Layout }) {
                 />
               ),
             )}
+            {highlights &&
+              shapes.nodes.map((node) => (
+                <NodeHighlight
+                  key={`highlight-${node.id}`}
+                  node={node}
+                  radius={radius}
+                  occupied={highlights.occupied.has(node.id)}
+                  flashing={highlights.flashing.has(node.id)}
+                />
+              ))}
             {shapes.nodes.map((node) => (
               <NodeMarker key={node.id} node={node} radius={radius} />
             ))}
@@ -107,6 +130,37 @@ export function CommunityMap({ layout }: { layout: Layout }) {
         </Stage>
       )}
     </div>
+  )
+}
+
+/** A halo behind a node: a ring while it has an object in view, a glow when an event arrives. */
+function NodeHighlight({
+  node,
+  radius,
+  occupied,
+  flashing,
+}: {
+  node: NodeShape
+  radius: number
+  occupied: boolean
+  flashing: boolean
+}) {
+  return (
+    <>
+      {flashing && (
+        <Circle x={node.x} y={node.y} radius={radius * 2.8} fill={COLORS.flash} opacity={0.35} />
+      )}
+      {occupied && (
+        <Circle
+          x={node.x}
+          y={node.y}
+          radius={radius * 1.9}
+          stroke={COLORS.occupied}
+          strokeWidth={radius / 2.5}
+          opacity={0.9}
+        />
+      )}
+    </>
   )
 }
 

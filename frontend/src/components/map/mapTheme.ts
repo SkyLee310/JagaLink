@@ -10,6 +10,8 @@ export const COLORS = {
   outline: '#020617', // slate-950
   selected: '#f8fafc', // slate-50
   pending: '#f472b6', // pink-400
+  occupied: '#34d399', // emerald-400: an object is in view
+  flash: '#facc15', // yellow-400: an event just arrived
 }
 
 export const ZONE_COLORS: Record<ZoneShape['kind'], string> = {

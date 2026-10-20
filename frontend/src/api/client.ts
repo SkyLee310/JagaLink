@@ -44,14 +44,21 @@ async function readError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, 'http_error', `The server answered ${response.status}`)
 }
 
-/** The lines worth showing for a failed call: each layout problem, or each malformed field. */
+/**
+ * The lines worth showing for a failed call: each layout or scenario problem, or each malformed
+ * field.
+ */
 export function errorLines(error: unknown): string[] {
   if (!(error instanceof ApiError)) return []
-  const details = error.details as { problems?: { message: string }[] } | ValidationItem[] | null
+  const details = error.details as
+    | { problems?: { message: string }[] }
+    | (ValidationItem | string)[]
+    | null
   if (Array.isArray(details)) {
-    return details.map(({ loc, msg }) => {
-      const where = (loc ?? []).filter((part) => part !== 'body').join('.')
-      const text = String(msg).replace(/^Value error, /, '')
+    return details.map((item) => {
+      if (typeof item === 'string') return item
+      const where = (item.loc ?? []).filter((part) => part !== 'body').join('.')
+      const text = String(item.msg).replace(/^Value error, /, '')
       return where ? `${where}: ${text}` : text
     })
   }

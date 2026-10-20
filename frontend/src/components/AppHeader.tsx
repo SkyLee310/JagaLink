@@ -5,10 +5,12 @@ import { useSession } from '../lib/session'
 
 type Role = Session['user']['role']
 
-// Screens per role (D-66): a guard gets the console; a supervisor also gets the editor.
+// Screens per role (D-66): a guard gets the console; a supervisor also gets the editor and the
+// scenario player.
 const PAGES: { to: string; label: string; roles: Role[] }[] = [
   { to: '/console', label: 'Console', roles: ['guard', 'supervisor'] },
   { to: '/editor', label: 'Layout', roles: ['supervisor'] },
+  { to: '/player', label: 'Scenarios', roles: ['supervisor'] },
 ]
 
 interface AppHeaderProps {
@@ -27,10 +29,11 @@ export function AppHeader({ session, communityName, confirmLeave }: AppHeaderPro
   }
 
   return (
-    <header className="flex items-center gap-3 border-b border-slate-800 px-4 py-2">
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-800 px-4 py-2">
       <span className="font-semibold tracking-wide text-sky-400">JagaLink</span>
       {pages.length > 1 && (
-        <nav aria-label="Pages" className="flex gap-1">
+        // On a phone the page links take their own row under the brand and Sign out.
+        <nav aria-label="Pages" className="order-last flex w-full gap-1 sm:order-none sm:w-auto">
           {pages.map((page) => (
             <NavLink
               key={page.to}
