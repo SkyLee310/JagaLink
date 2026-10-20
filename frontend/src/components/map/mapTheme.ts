@@ -12,6 +12,7 @@ export const COLORS = {
   pending: '#f472b6', // pink-400
   occupied: '#34d399', // emerald-400: an object is in view
   flash: '#facc15', // yellow-400: an event just arrived
+  path: '#e879f9', // fuchsia-400: an anonymous path (F3)
 }
 
 export const ZONE_COLORS: Record<ZoneShape['kind'], string> = {

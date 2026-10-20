@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { SseMessage } from '../api/sse'
-import type { RunEvent } from '../api/types'
-import { emptyLiveRun, FLASH_MS, type LiveRun, liveRunReducer, mapHighlights } from './liveRun'
+import type { RunEvent, Track } from '../api/types'
+import {
+  emptyLiveRun,
+  FLASH_MS,
+  type LiveRun,
+  liveRunReducer,
+  mapHighlights,
+  mapPaths,
+} from './liveRun'
 
 let seq = 0
 
@@ -20,6 +27,27 @@ function event(nodeId: string, type: RunEvent['type'], localTrackId: string): Ss
     source: 'sim',
   }
   return { id: String(seq), event: 'event', data: JSON.stringify(data) }
+}
+
+function track(id: string, nodeIds: string[], status: Track['status'] = 'active'): SseMessage {
+  seq += 1
+  const data: Track = {
+    id,
+    run_id: 'r1',
+    anon_id: `obj-${id}`,
+    object_class: 'person',
+    status,
+    first_ts: '2026-10-21T18:10:00.000Z',
+    last_ts: '2026-10-21T18:12:00.000Z',
+    expires_at: '2026-10-22T18:12:00.000Z',
+    segments: nodeIds.map((nodeId, index) => ({
+      node_id: nodeId,
+      enter_ts: `2026-10-21T18:1${index}:00.000Z`,
+      exit_ts: null,
+      event_ids: [],
+    })),
+  }
+  return { id: String(seq), event: 'track_update', data: JSON.stringify(data) }
 }
 
 function play(messages: SseMessage[], receivedAt = 1000): LiveRun {
@@ -53,6 +81,23 @@ describe('liveRunReducer', () => {
     expect(liveRunReducer(state, { type: 'message', message: other, receivedAt: 0 })).toBe(state)
     expect(liveRunReducer(state, { type: 'reset' })).toBe(emptyLiveRun)
   })
+
+  it('keeps the latest state of each path and drops a path once it expires', () => {
+    const state = play([
+      track('a1', ['fence']),
+      event('fence', 'appear', 'fence#4'),
+      track('b2', ['gate']),
+      track('a1', ['fence', 'back']),
+    ])
+    expect(Object.keys(state.tracks)).toEqual(['a1', 'b2'])
+    expect(state.tracks.a1.segments.map((segment) => segment.node_id)).toEqual(['fence', 'back'])
+    expect(state.events).toHaveLength(1)
+
+    const message = track('a1', ['fence', 'back'], 'expired')
+    const expired = liveRunReducer(state, { type: 'message', message, receivedAt: 2000 })
+    expect(Object.keys(expired.tracks)).toEqual(['b2'])
+    expect(expired.events).toBe(state.events)
+  })
 })
 
 describe('mapHighlights', () => {
@@ -67,5 +112,15 @@ describe('mapHighlights', () => {
     expect([...soon.occupied]).toEqual(['fence'])
     expect([...soon.flashing].sort()).toEqual(['back', 'fence'])
     expect(mapHighlights(left, 1000 + FLASH_MS).flashing.size).toBe(0)
+  })
+})
+
+describe('mapPaths', () => {
+  it('draws each path through its nodes in order, labelled with its anonymous ID', () => {
+    const state = play([track('a1', ['fence', 'back']), track('b2', ['gate'], 'closed')])
+    expect(mapPaths(state)).toEqual([
+      { id: 'a1', label: 'obj-a1', nodeIds: ['fence', 'back'], active: true },
+      { id: 'b2', label: 'obj-b2', nodeIds: ['gate'], active: false },
+    ])
   })
 })

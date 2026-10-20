@@ -1490,7 +1490,7 @@
           "events"
         ],
         "summary": "Post Events",
-        "description": "Store a batch of one run's events in the one contract (D-16, D-30) and push them.\n\n422 for a malformed event, an unknown field, a node outside the community, mixed runs, or\nan event earlier than the run's latest; 409 once the run has finished or been replaced.",
+        "description": "Store a batch of one run's events in the one contract (D-16, D-30), link them into\ntracks (F3) and push both.\n\n422 for a malformed event, an unknown field, a node outside the community, mixed runs, or\nan event earlier than the run's latest; 409 once the run has finished or been replaced.",
         "operationId": "post_events_api_v1_events_post",
         "security": [
           {
@@ -1692,6 +1692,178 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/tracks": {
+      "get": {
+        "tags": [
+          "tracks"
+        ],
+        "summary": "Get Tracks",
+        "description": "Anonymous paths (F3) in order of their first sighting, each with its ordered segments.",
+        "operationId": "get_tracks_api_v1_tracks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "active",
+                    "closed",
+                    "expired"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrackOut"
+                  },
+                  "title": "Response Get Tracks Api V1 Tracks Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/tracks/{track_id}": {
+      "get": {
+        "tags": [
+          "tracks"
+        ],
+        "summary": "Get Track",
+        "description": "One path with its ordered segments; 404 once it has expired and been purged (D-11).",
+        "operationId": "get_track_api_v1_tracks__track_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "422": {
             "content": {
@@ -3129,6 +3301,49 @@
         ],
         "title": "ScenarioOut"
       },
+      "SegmentOut": {
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Node Id"
+          },
+          "enter_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Enter Ts"
+          },
+          "exit_ts": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Ts"
+          },
+          "event_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "node_id",
+          "enter_ts",
+          "exit_ts",
+          "event_ids"
+        ],
+        "title": "SegmentOut",
+        "description": "A track's stay in front of one node, with the events it is built from."
+      },
       "SessionIn": {
         "properties": {
           "user_id": {
@@ -3209,6 +3424,77 @@
           "on_duty"
         ],
         "title": "SessionUserOut"
+      },
+      "TrackOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "anon_id": {
+            "type": "string",
+            "title": "Anon Id"
+          },
+          "object_class": {
+            "type": "string",
+            "enum": [
+              "person",
+              "vehicle"
+            ],
+            "title": "Object Class"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "closed",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "first_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Ts"
+          },
+          "last_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Ts"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentOut"
+            },
+            "type": "array",
+            "title": "Segments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "anon_id",
+          "object_class",
+          "status",
+          "first_ts",
+          "last_ts",
+          "expires_at",
+          "segments"
+        ],
+        "title": "TrackOut",
+        "description": "One anonymous cross-camera path (F3), its segments in order. `status` is `expired` only\nin the stream message that removes it: an expired track is deleted (D-11, D-56)."
       },
       "ValidationError": {
         "properties": {

@@ -1,13 +1,16 @@
 import { useMemo, useRef } from 'react'
-import { Arrow, Circle, Image, Layer, Line, Rect, Stage, Text, Wedge } from 'react-konva'
+import { Arrow, Circle, Image, Label, Layer, Line, Rect, Stage, Tag, Text, Wedge } from 'react-konva'
 import type { Layout } from '../../api/types'
 import { useElementSize, useImage } from './hooks'
 import {
   CAMERA_FOV_DEG,
   fitScale,
+  headLabels,
   labelSide,
   MAP_SIZE,
+  type MapPath,
   type NodeShape,
+  pathPoints,
   toMapShapes,
   trimLine,
 } from './mapShapes'
@@ -24,19 +27,27 @@ export interface MapHighlights {
 interface CommunityMapProps {
   layout: Layout
   highlights?: MapHighlights
+  /** Anonymous paths (F3), drawn along the links with their ID at the head. */
+  paths?: readonly MapPath[]
 }
 
 /** Read-only plan of one community: background, zones, links, cameras and sensors (F1 view). */
-export function CommunityMap({ layout, highlights }: CommunityMapProps) {
+export function CommunityMap({ layout, highlights, paths = [] }: CommunityMapProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const scale = fitScale(useElementSize(frameRef))
   const background = useImage(layout.community.map_image_url)
   const shapes = useMemo(() => toMapShapes(layout), [layout])
+  const nodesById = useMemo(() => new Map(shapes.nodes.map((node) => [node.id, node])), [shapes])
 
   // Markers, lines and text keep a readable size on screen at any scale.
   const onScreen = (px: number) => px / scale
   const radius = Math.max(7, onScreen(5))
   const showLabels = scale >= LABEL_MIN_SCALE
+  // Closed paths first, so the paths still being followed draw over them.
+  const pathLines = [...paths]
+    .sort((a, b) => Number(a.active) - Number(b.active))
+    .map((path) => ({ ...path, points: pathPoints(path.nodeIds, nodesById, radius + onScreen(2)) }))
+    .filter((path) => path.points.length >= 4)
 
   return (
     <div
@@ -100,6 +111,20 @@ export function CommunityMap({ layout, highlights }: CommunityMapProps) {
                 />
               ),
             )}
+            {pathLines.map((path) => (
+              <Arrow
+                key={`path-${path.id}`}
+                points={path.points}
+                stroke={COLORS.path}
+                fill={COLORS.path}
+                strokeWidth={onScreen(path.active ? 3 : 2)}
+                pointerLength={onScreen(9)}
+                pointerWidth={onScreen(9)}
+                lineCap="round"
+                lineJoin="round"
+                opacity={path.active ? 0.95 : 0.45}
+              />
+            ))}
             {highlights &&
               shapes.nodes.map((node) => (
                 <NodeHighlight
@@ -126,6 +151,28 @@ export function CommunityMap({ layout, highlights }: CommunityMapProps) {
                   fill={COLORS.label}
                 />
               ))}
+            {headLabels(paths, nodesById).map((label) => (
+              <Label
+                key={`path-label-${label.id}`}
+                x={label.x}
+                y={label.y - radius - onScreen(2) - label.stack * onScreen(24)}
+              >
+                <Tag
+                  fill={COLORS.path}
+                  cornerRadius={onScreen(3)}
+                  pointerDirection="down"
+                  pointerWidth={onScreen(8)}
+                  pointerHeight={onScreen(5)}
+                />
+                <Text
+                  text={label.text}
+                  fontFamily="monospace"
+                  fontSize={onScreen(11)}
+                  padding={onScreen(3)}
+                  fill={COLORS.outline}
+                />
+              </Label>
+            ))}
           </Layer>
         </Stage>
       )}

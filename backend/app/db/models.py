@@ -14,13 +14,15 @@ from sqlalchemy import (
     Integer,
     Text,
     UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy import text as sql
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.engine.events import EventSource, EventType, ObjectClass
+from app.engine.linker import TrackStatus
 
 ZoneKind = Literal["street", "gate", "lane"]
 NodeKind = Literal["camera", "sensor"]
@@ -209,3 +211,44 @@ class Event(Base):
         JSONB, default=dict, server_default=sql("'{}'::jsonb")
     )
     source: Mapped[str] = mapped_column(Text)
+
+
+class Track(Base):
+    """One anonymous cross-camera path (F3). It is deleted when it expires (D-11, D-56)."""
+
+    __tablename__ = "track"
+    __table_args__ = (
+        UniqueConstraint("run_id", "number"),
+        UniqueConstraint("run_id", "anon_id"),
+        CheckConstraint(one_of("object_class", ObjectClass), name="object_class"),
+        CheckConstraint(one_of("status", TrackStatus), name="status"),
+        Index("ix_track_community_id_expires_at", "community_id", "expires_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scenario_run.id", ondelete="CASCADE"))
+    # Order of creation within the run: the linker's track number.
+    number: Mapped[int] = mapped_column(Integer)
+    # Pseudonymous, per run; it says nothing about who the object is (D-09).
+    anon_id: Mapped[str] = mapped_column(Text)
+    object_class: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text)
+    first_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TrackSegment(Base):
+    """A track's stay in front of one node; `position` orders a track's segments."""
+
+    __tablename__ = "track_segment"
+    __table_args__ = (UniqueConstraint("track_id", "position"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    track_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("track.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("node.id", ondelete="CASCADE"))
+    enter_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    exit_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid))

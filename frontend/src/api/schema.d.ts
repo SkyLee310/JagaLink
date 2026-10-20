@@ -367,12 +367,53 @@ export interface paths {
         put?: never;
         /**
          * Post Events
-         * @description Store a batch of one run's events in the one contract (D-16, D-30) and push them.
+         * @description Store a batch of one run's events in the one contract (D-16, D-30), link them into
+         *     tracks (F3) and push both.
          *
          *     422 for a malformed event, an unknown field, a node outside the community, mixed runs, or
          *     an event earlier than the run's latest; 409 once the run has finished or been replaced.
          */
         post: operations["post_events_api_v1_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tracks
+         * @description Anonymous paths (F3) in order of their first sighting, each with its ordered segments.
+         */
+        get: operations["get_tracks_api_v1_tracks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tracks/{track_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Track
+         * @description One path with its ordered segments; 404 once it has expired and been purged (D-11).
+         */
+        get: operations["get_track_api_v1_tracks__track_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -966,6 +1007,26 @@ export interface components {
              */
             window_end: string;
         };
+        /**
+         * SegmentOut
+         * @description A track's stay in front of one node, with the events it is built from.
+         */
+        SegmentOut: {
+            /**
+             * Node Id
+             * Format: uuid
+             */
+            node_id: string;
+            /**
+             * Enter Ts
+             * Format: date-time
+             */
+            enter_ts: string;
+            /** Exit Ts */
+            exit_ts: string | null;
+            /** Event Ids */
+            event_ids: string[];
+        };
         /** SessionIn */
         SessionIn: {
             /**
@@ -1008,6 +1069,52 @@ export interface components {
             role: "guard" | "supervisor";
             /** On Duty */
             on_duty: boolean;
+        };
+        /**
+         * TrackOut
+         * @description One anonymous cross-camera path (F3), its segments in order. `status` is `expired` only
+         *     in the stream message that removes it: an expired track is deleted (D-11, D-56).
+         */
+        TrackOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Anon Id */
+            anon_id: string;
+            /**
+             * Object Class
+             * @enum {string}
+             */
+            object_class: "person" | "vehicle";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "closed" | "expired";
+            /**
+             * First Ts
+             * Format: date-time
+             */
+            first_ts: string;
+            /**
+             * Last Ts
+             * Format: date-time
+             */
+            last_ts: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Segments */
+            segments: components["schemas"]["SegmentOut"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -2252,6 +2359,97 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_tracks_api_v1_tracks_get: {
+        parameters: {
+            query?: {
+                run_id?: string | null;
+                status?: ("active" | "closed" | "expired") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_track_api_v1_tracks__track_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

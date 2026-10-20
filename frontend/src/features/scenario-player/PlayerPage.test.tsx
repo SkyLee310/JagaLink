@@ -1,22 +1,39 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
-import type { RunEvent, Run, Scenario, Session } from '../../api/types'
+import type { RunEvent, Run, Scenario, Session, Track } from '../../api/types'
 import type { MapHighlights } from '../../components/map/CommunityMap'
+import type { MapPath } from '../../components/map/mapShapes'
 import { useSession } from '../../lib/session'
 import { jsonResponse } from '../../test/http'
 import { testLayout } from '../layout-editor/testLayout'
 import { PlayerPage } from './PlayerPage'
 
-// Konva needs a real canvas, so the map becomes a list of the cameras it would light up.
+// Konva needs a real canvas, so the map becomes lists of the cameras it would light up and the
+// paths it would draw.
 vi.mock('../../components/map/CommunityMap', async () => {
-  const { createElement } = await import('react')
-  const map = ({ highlights }: { highlights?: MapHighlights }) =>
+  const { createElement, Fragment } = await import('react')
+  const map = ({ highlights, paths }: { highlights?: MapHighlights; paths?: MapPath[] }) =>
     createElement(
-      'ul',
-      { 'aria-label': 'Cameras in view' },
-      [...(highlights?.occupied ?? [])].map((id) => createElement('li', { key: id }, id)),
+      Fragment,
+      null,
+      createElement(
+        'ul',
+        { 'aria-label': 'Cameras in view' },
+        [...(highlights?.occupied ?? [])].map((id) => createElement('li', { key: id }, id)),
+      ),
+      createElement(
+        'ul',
+        { 'aria-label': 'Paths' },
+        (paths ?? []).map((path) =>
+          createElement(
+            'li',
+            { key: path.id },
+            `${path.label} ${path.nodeIds.join('>')}${path.active ? '' : ' (closed)'}`,
+          ),
+        ),
+      ),
     )
   return { CommunityMap: map }
 })
@@ -83,6 +100,30 @@ function frame(seq: number, nodeId: string, type: RunEvent['type'], localTrackId
     source: 'sim',
   }
   return `id: ${seq}\nevent: event\ndata: ${JSON.stringify(event)}\n\n`
+}
+
+function trackFrame(seq: number, id: string, nodeIds: string[], status: Track['status']) {
+  const track: Track = {
+    id,
+    run_id: 'r1',
+    anon_id: `obj-${id}`,
+    object_class: 'person',
+    status,
+    first_ts: '2026-10-21T18:10:00.000Z',
+    last_ts: '2026-10-21T18:12:00.000Z',
+    expires_at: '2026-10-22T18:12:00.000Z',
+    segments: nodeIds.map((nodeId) => ({
+      node_id: nodeId,
+      enter_ts: '2026-10-21T18:10:00.000Z',
+      exit_ts: null,
+      event_ids: [],
+    })),
+  }
+  return `id: ${seq}
+event: track_update
+data: ${JSON.stringify(track)}
+
+`
 }
 
 /** An SSE response that sends `text` and stays open until the request is aborted. */
@@ -179,6 +220,30 @@ describe('PlayerPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
     await waitFor(() => expect(calls(fetchMock, 'POST', '/scenario-runs/r1/pause')).toHaveLength(1))
     expect(await screen.findByText('Paused')).toBeTruthy()
+  })
+
+  it('draws each anonymous path as it grows and drops it once it expires', async () => {
+    serve(playing(SCENARIOS[1]), (url, init) =>
+      url.includes('/stream?run_id=r1')
+        ? sseResponse(
+            trackFrame(1, 'f1a2b3', ['a'], 'active') +
+              trackFrame(2, 'c4d5e6', ['c'], 'closed') +
+              trackFrame(3, 'f1a2b3', ['a', 'b'], 'active') +
+              trackFrame(4, 'a0b0c0', ['d'], 'active') +
+              trackFrame(5, 'a0b0c0', ['d'], 'expired'),
+            init?.signal,
+          )
+        : undefined,
+    )
+    renderPlayer()
+
+    const paths = await screen.findByRole('list', { name: 'Paths' })
+    await waitFor(() =>
+      expect(within(paths).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        'obj-f1a2b3 a>b',
+        'obj-c4d5e6 c (closed)',
+      ]),
+    )
   })
 
   it('lists each reason a scenario cannot play', async () => {

@@ -5,13 +5,16 @@ import { useRunStream } from '../../api/sse'
 import type { Layout, Run, Scenario, Session } from '../../api/types'
 import { AppHeader } from '../../components/AppHeader'
 import { CommunityMap } from '../../components/map/CommunityMap'
-import { emptyLiveRun, liveRunReducer, mapHighlights } from '../../lib/liveRun'
+import { emptyLiveRun, liveRunReducer, mapHighlights, mapPaths } from '../../lib/liveRun'
 import { useSession } from '../../lib/session'
 import { EventFeed } from './EventFeed'
 import { RunControls } from './RunControls'
 import { useNow } from './runTime'
 
-/** The supervisor's scenario player (F2, D-66): play, pause, reset; events light up cameras. */
+/**
+ * The supervisor's scenario player (F2, D-66): play, pause, reset; events light up cameras and
+ * linked sightings grow into anonymous paths (F3).
+ */
 export function PlayerPage() {
   const session = useSession((state) => state.session)
   if (!session) return <Navigate to="/" replace />
@@ -73,6 +76,7 @@ function LivePlayer({ layout, scenarios, run, fetchedAt }: LivePlayerProps) {
   )
   const now = useNow(250)
   const nodes = useMemo(() => new Map(layout.nodes.map((node) => [node.id, node])), [layout])
+  const paths = useMemo(() => mapPaths(live), [live])
   const timeZone = layout.community.timezone
 
   return (
@@ -86,7 +90,7 @@ function LivePlayer({ layout, scenarios, run, fetchedAt }: LivePlayerProps) {
           timeZone={timeZone}
         />
         <div className="h-72 sm:h-96 lg:h-auto lg:min-h-72 lg:flex-1">
-          <CommunityMap layout={layout} highlights={mapHighlights(live, now)} />
+          <CommunityMap layout={layout} highlights={mapHighlights(live, now)} paths={paths} />
         </div>
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
           <span className="flex items-center gap-1.5">
@@ -94,6 +98,10 @@ function LivePlayer({ layout, scenarios, run, fetchedAt }: LivePlayerProps) {
           </span>
           <span className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-yellow-400/60" /> new event
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded-full bg-fuchsia-400" /> path, tagged with its
+            anonymous ID
           </span>
         </p>
       </section>

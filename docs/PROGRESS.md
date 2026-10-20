@@ -132,3 +132,33 @@ One entry per milestone or working session, newest last: what changed, the imple
 - SQLAlchemy 2.1: `Result.tuples()` is deprecated and `dict(result)` fails; build dicts with a comprehension over the rows.
 - FastAPI wraps included routes as `_IncludedRouter`; list paths with `app.openapi()`.
 - The Vite dev server's Tailwind missed every class in a feature folder created while it ran. Restart `pnpm dev` after adding a folder.
+
+## 2026-10-20 · M3 events become a path (F3)
+
+**Status.** M3.1–M3.5 done (PR #7). The deployed check waits on M0.10.
+
+**What changed**
+- Backend:
+  - `engine/linker.py`, the pure path linker: a deterministic state machine fed one sighting at a time (`feed`, `advance`, `finish`; `link_all` for a whole list). It joins by D-17 with the D-55 class factor, lets the best time fit win, and closes and expires tracks by D-56;
+  - golden path files `golden/*.paths.jsonl` pin every track of each whole night; `uv run python -m app.sim.golden` rewrites them with the event files. Tests also check that each scripted object maps to exactly one track, and each target to one closed path through all its visits;
+  - migration `0004`: `track` and `track_segment`, each segment with the IDs of the events behind it;
+  - `core/pipeline.py`: every stored batch (player or `POST /events`) goes through the run's linker; changed tracks are written and pushed as `track_update` messages, and expired ones are deleted and pushed once more with status `expired`. When the run ends, its open tracks close;
+  - `GET /tracks` (by run and status) and `GET /tracks/{id}` (404 `track_not_found` once purged); `TRACK_TTL_S` (default 86400) sets the TTL.
+- Frontend: the player map draws each active path as a bright arrow along the links, tagged with its anonymous ID at the head (tags stack where paths meet). Closed paths stay faint and untagged; an expired path leaves the map.
+- Browser check (local API on PostgreSQL 16, 1440 × 900):
+  - S2 at 60×: one line grew from the north fence sensor through back-02 to lane-2n with its `obj-…` tag, then on through main-02 and lane-2s to the south fence, and turned faint when the run finished;
+  - S1 at 60×: the vehicle's repeated loop drew as one tagged path round the south lanes and the main road.
+
+**Implementation decisions**
+- Expiry runs in event time (D-31): `expires_at = last_ts + TTL`, and after each batch the purge deletes every track of the community whose `expires_at` is at or before the batch's last event time. A wall-clock purge would delete the scenario-dated tracks (21 Oct) as soon as the real date passed them.
+- IDs are deterministic. A track's ID is `uuid5(run_id, "track-<n>")`; its anonymous ID `obj-xxxxxx` steps an odd constant through 24 bits from a run-specific offset, so it never repeats within a run, and a rebuilt linker lands on the same rows.
+- Each run's linker lives in memory. After a restart or a failed batch it is rebuilt from the run's stored events, so posted batches keep linking across restarts.
+- A dwell or disappear with no appear before it starts a new track rather than being dropped. A track waiting off camera closes once the largest outgoing `travel_max_s` has passed; a track still in view stays open until the run ends.
+- At the run's end, `finish` first advances the linker to the window end (expiring anything due), then closes every open track.
+- `track_update` carries the whole track each time, so the client keeps only the latest version; a reconnect replays the run's log as before.
+
+**⚠️ Traps**
+- After pulling M3, run `make seed` (or `uv run alembic upgrade head` in `backend/`) on the dev database. A server still on migration 0003 fails every ingest because the `track` table is missing.
+- D-56 says expiry clears `anomaly.track_id`: give that foreign key `ON DELETE SET NULL` in M4. `purge_expired` is a bulk `DELETE … RETURNING`, so ORM cascades never run; only database `ON DELETE` rules apply.
+- The golden path files cover the whole night (71 tracks each), while a live run plays only its window (S1 50 events, S2 15 with one track), so a live run produces far fewer tracks.
+- `preview_logs` on the API server can return tens of thousands of characters after a stack trace; restart the server rather than reading it all.

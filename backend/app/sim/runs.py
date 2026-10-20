@@ -1,9 +1,9 @@
 """Live runs (F2, D-77): one playing scenario per community, its state in the database.
 
 The API's sync routes call in from worker threads; each player is a task on the app's event loop.
-A played batch goes through the same ingest as `POST /events` (D-30), in a worker thread, and then
-out to the run's stream. While a player runs, a route touches the database only before it starts
-or after it has stopped the player: tests share one session between the two.
+A played batch goes through the same ingest and pipeline as `POST /events` (D-30), in a worker
+thread, and then out to the run's stream. While a player runs, a route touches the database only
+before it starts or after it has stopped the player: tests share one session between the two.
 """
 
 import asyncio
@@ -21,11 +21,13 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.core.hub import Hub, Item
-from app.db import event_store
+from app.core.pipeline import Pipelines
+from app.db import event_store, track_store
 from app.db.layout_store import export_layout
-from app.db.models import AppUser, Community, Event, Node, Scenario, ScenarioRun
+from app.db.models import AppUser, Community, Event, Node, Scenario, ScenarioRun, Track
 from app.db.session import get_engine
 from app.engine.clock import SimClock
+from app.engine.linker import DEFAULT_TTL_S
 from app.schemas.events import EventIn
 from app.schemas.scenarios import RunOut, ScenarioOut
 from app.sim.player import Player, Timer, WallTimer
@@ -139,13 +141,17 @@ def apply_roster(db: Session, community: Community, file: ScenarioFile) -> None:
 
 def clear_run(db: Session, run_id: uuid.UUID) -> None:
     """Delete what a run produced, so it can play again from the start."""
+    db.execute(delete(Track).where(Track.run_id == run_id))
     db.execute(delete(Event).where(Event.run_id == run_id))
 
 
 def run_backlog(db: Session, run_id: uuid.UUID) -> list[Item]:
     """The stream messages that bring a new subscriber up to date with the run (D-36)."""
     events = db.scalars(select(Event).where(Event.run_id == run_id).order_by(Event.seq))
-    return [event_store.event_message(event) for event in events]
+    items = [event_store.event_message(event) for event in events]
+    return items + [
+        track_store.track_message(track) for track in track_store.run_tracks(db, run_id)
+    ]
 
 
 class RunManager:
@@ -154,10 +160,12 @@ class RunManager:
         hub: Hub | None = None,
         timer: Timer | None = None,
         session_scope: SessionScope = default_scope,
+        track_ttl_s: float = DEFAULT_TTL_S,
     ) -> None:
         self.hub = hub or Hub()
         self.timer: Timer = timer or WallTimer()
         self.session_scope = session_scope
+        self.pipelines = Pipelines(track_ttl_s)
         self.loop: asyncio.AbstractEventLoop | None = None
         self.live: dict[uuid.UUID, LiveRun] = {}
         self.prepared: dict[uuid.UUID, Prepared] = {}
@@ -364,14 +372,25 @@ class RunManager:
             await asyncio.to_thread(self._settle, run_id, "paused")
             return
         if finished:
-            await asyncio.to_thread(self._settle, run_id, "finished")
+            items = await asyncio.to_thread(self._settle, run_id, "finished", player.end)
+            self.hub.publish(run_id, items)
 
-    def _settle(self, run_id: uuid.UUID, state: Literal["paused", "finished"]) -> None:
+    def _settle(
+        self,
+        run_id: uuid.UUID,
+        state: Literal["paused", "finished"],
+        end: datetime | None = None,
+    ) -> list[Item]:
+        """Record where the player stopped; at the end of the window, close the run's tracks."""
+        items: list[Item] = []
         with self.session_scope() as db:
             run = db.get(ScenarioRun, run_id)
             if run is not None and run.state in ("playing", "paused"):
                 run.state = state
+                if state == "finished" and end is not None:
+                    items = self.pipelines.finish(db, run, end)
                 db.commit()
+        return items
 
     async def _emit(self, run_id: uuid.UUID, prepared: Prepared, batch: list[ScriptEvent]) -> None:
         # The player posts the event contract only: never the object behind it (D-70).
@@ -393,9 +412,18 @@ class RunManager:
     def _store(self, run_id: uuid.UUID, events: list[EventIn]) -> list[Item]:
         with self.session_scope() as db:
             run = db.get_one(ScenarioRun, run_id)
-            stored = event_store.ingest(db, run, events)
+            return self.ingest(db, run, events)
+
+    def ingest(self, db: Session, run: ScenarioRun, events: list[EventIn]) -> list[Item]:
+        """Store a batch, run it through the pipeline and commit; the stream messages for it."""
+        stored = event_store.ingest(db, run, events)
+        try:
             items = [event_store.event_message(event) for event in stored]
+            items += self.pipelines.process(db, run, stored)
             db.commit()
+        except Exception:
+            self.pipelines.forget(run.id)
+            raise
         return items
 
     async def _retire(self, run_id: uuid.UUID) -> None:
@@ -405,6 +433,7 @@ class RunManager:
             live.player.stop()
             await live.task
         self.prepared.pop(run_id, None)
+        self.pipelines.forget(run_id)
         self.hub.close(run_id)
 
     async def _pause(self, run_id: uuid.UUID) -> Literal["paused", "done", "absent"]:
