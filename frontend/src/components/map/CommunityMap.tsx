@@ -1,38 +1,17 @@
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { Arrow, Circle, Image, Layer, Line, Rect, Stage, Text, Wedge } from 'react-konva'
 import type { Layout } from '../../api/types'
+import { useElementSize, useImage } from './hooks'
 import {
   CAMERA_FOV_DEG,
   fitScale,
   labelSide,
   MAP_SIZE,
   type NodeShape,
-  type Size,
   toMapShapes,
   trimLine,
-  type ZoneShape,
 } from './mapShapes'
-
-const COLORS = {
-  camera: '#38bdf8', // sky-400
-  sensor: '#fbbf24', // amber-400
-  offline: '#64748b', // slate-500
-  link: '#94a3b8', // slate-400
-  label: '#e2e8f0', // slate-200
-  outline: '#020617', // slate-950
-}
-
-const ZONE_COLORS: Record<ZoneShape['kind'], string> = {
-  gate: '#f472b6', // pink-400
-  street: '#a78bfa', // violet-400
-  lane: '#34d399', // emerald-400
-}
-
-/** Text labels appear once the map is drawn at 60 % of its full size or more. */
-const LABEL_MIN_SCALE = 0.6
-
-/** On-screen width kept for a node code label, in pixels. */
-const LABEL_WIDTH = 64
+import { COLORS, LABEL_MIN_SCALE, LABEL_WIDTH, ZONE_COLORS } from './mapTheme'
 
 /** Read-only plan of one community: background, zones, links, cameras and sensors (F1 view). */
 export function CommunityMap({ layout }: { layout: Layout }) {
@@ -169,32 +148,4 @@ function NodeMarker({ node, radius }: { node: NodeShape; radius: number }) {
       />
     </>
   )
-}
-
-function useElementSize(ref: RefObject<HTMLElement | null>): Size {
-  const [size, setSize] = useState<Size>({ width: 0, height: 0 })
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const observer = new ResizeObserver(([entry]) => {
-      setSize({ width: entry.contentRect.width, height: entry.contentRect.height })
-    })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [ref])
-  return size
-}
-
-function useImage(src: string | null): HTMLImageElement | null {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-  useEffect(() => {
-    if (!src) return
-    const element = new window.Image()
-    element.onload = () => setImage(element)
-    element.src = src
-    return () => {
-      element.onload = null
-    }
-  }, [src])
-  return src ? image : null
 }

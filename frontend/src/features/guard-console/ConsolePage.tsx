@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router'
 import { useLayout } from '../../api/queries'
 import type { Layout, Session } from '../../api/types'
+import { AppHeader } from '../../components/AppHeader'
 import { CommunityMap } from '../../components/map/CommunityMap'
 import { useSession } from '../../lib/session'
 
@@ -13,30 +14,10 @@ export function ConsolePage() {
 
 function Console({ session }: { session: Session }) {
   const layout = useLayout(session.community_id)
-  const signOut = useSession((state) => state.signOut)
-  const { user } = session
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b border-slate-800 px-4 py-2">
-        <span className="font-semibold tracking-wide text-sky-400">JagaLink</span>
-        <span className="hidden truncate text-sm text-slate-400 sm:inline">
-          {layout.data?.community.name}
-        </span>
-        <span className="ml-auto truncate text-sm">
-          {user.name}{' '}
-          <span className="text-slate-500">
-            · {user.role === 'supervisor' ? 'Supervisor' : 'Guard'}
-          </span>
-        </span>
-        <button
-          type="button"
-          onClick={signOut}
-          className="shrink-0 rounded-md border border-slate-700 px-3 py-1 text-sm hover:border-slate-500"
-        >
-          Sign out
-        </button>
-      </header>
+      <AppHeader session={session} communityName={layout.data?.community.name} />
 
       <main className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:p-4">
         {layout.isPending && <p className="m-auto text-sm text-slate-400">Loading the map…</p>}
