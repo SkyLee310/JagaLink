@@ -1,6 +1,7 @@
-"""M2.5: GET /stream sends a run's events as Server-Sent Events to its community's users."""
+"""M2.5, M3.3: GET /stream sends a run's events and track updates as Server-Sent Events."""
 
 import asyncio
+import json
 import uuid
 from collections.abc import Callable
 
@@ -37,12 +38,16 @@ def test_the_stream_sends_the_backlog_and_ends_when_the_run_is_reset(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.headers["cache-control"] == "no-cache"
-    frames = [frame for frame in response.text.split("\n\n") if frame]
-    assert len(frames) == 15
-    first = frames[0].split("\n")
-    assert first[:2] == ["id: 1", "event: event"]
-    assert first[2].startswith('data: {"id":')
-    assert '"type":"appear"' in first[2]
+    frames = [frame.split("\n") for frame in response.text.split("\n\n") if frame]
+    kinds = [frame[1] for frame in frames]
+    assert kinds.count("event: event") == 15
+    assert frames[0][:2] == ["id: 1", "event: event"]
+    assert frames[0][2].startswith('data: {"id":')
+    assert '"type":"appear"' in frames[0][2]
+    # The person's path grows with each sighting and closes when the window ends.
+    assert kinds[-1] == "event: track_update"
+    path = json.loads(frames[-1][2].removeprefix("data: "))
+    assert (path["status"], len(path["segments"])) == ("closed", 6)
 
 
 def test_a_new_subscriber_after_a_restart_gets_the_backlog_from_the_database(
@@ -57,8 +62,10 @@ def test_a_new_subscriber_after_a_restart_gets_the_backlog_from_the_database(
 
     backlog = manager.backlog(uuid.UUID(run["id"]), community_id)
 
-    assert [kind for kind, _ in backlog] == ["event"] * 15
-    assert [data["seq"] for _, data in backlog] == list(range(1, 16))
+    assert [kind for kind, _ in backlog] == ["event"] * 15 + ["track_update"]
+    assert [data["seq"] for _, data in backlog[:15]] == list(range(1, 16))
+    path = backlog[-1][1]
+    assert (path["status"], len(path["segments"])) == ("closed", 6)
 
 
 def test_the_stream_needs_a_token_and_a_run_of_the_community(

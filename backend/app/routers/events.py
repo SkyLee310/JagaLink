@@ -25,18 +25,16 @@ def post_events(
     db: Db,
     runs: Runs,
 ) -> list[EventOut]:
-    """Store a batch of one run's events in the one contract (D-16, D-30) and push them.
+    """Store a batch of one run's events in the one contract (D-16, D-30), link them into
+    tracks (F3) and push both.
 
     422 for a malformed event, an unknown field, a node outside the community, mixed runs, or
     an event earlier than the run's latest; 409 once the run has finished or been replaced.
     """
     run = own_run(db, user, body.events[0].run_id)
-    stored = event_store.ingest(db, run, body.events)
-    out = [EventOut.model_validate(event) for event in stored]
-    items = [event_store.event_message(event) for event in stored]
-    db.commit()
+    items = runs.ingest(db, run, body.events)
     runs.hub.publish_threadsafe(run.id, items)
-    return out
+    return [EventOut.model_validate(data) for kind, data in items if kind == "event"]
 
 
 @router.get("/events", responses=error_responses(401, 422))

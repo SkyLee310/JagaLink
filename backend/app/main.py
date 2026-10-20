@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.errors import install_error_handlers
 from app.core.settings import get_settings
-from app.routers import events, health, layout, scenarios, session, stream
+from app.routers import events, health, layout, scenarios, session, stream, tracks
 from app.sim.runs import RunManager
 
 
@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
         redoc_url=None,
         lifespan=lifespan,
     )
-    app.state.runs = RunManager()
+    app.state.runs = RunManager(track_ttl_s=settings.track_ttl_s)
     # D-41: only the deployed frontend may call the API from a browser.
     app.add_middleware(
         CORSMiddleware,
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
 
     api = APIRouter(prefix="/api/v1")
-    for module in (health, session, layout, scenarios, events, stream):
+    for module in (health, session, layout, scenarios, events, tracks, stream):
         api.include_router(module.router)
     app.include_router(api)
     return app

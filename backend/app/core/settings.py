@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal, Self
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_SESSION_SECRET = "dev-only-session-secret"
@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://jagalink:jagalink@localhost:5432/jagalink"
     frontend_origin: str = "http://localhost:5173"
     session_secret: str = DEV_SESSION_SECRET
+    # D-56: a track is deleted this long after its last sighting, in event time.
+    track_ttl_s: float = Field(default=24 * 3600, gt=0)
 
     @field_validator("database_url")
     @classmethod
