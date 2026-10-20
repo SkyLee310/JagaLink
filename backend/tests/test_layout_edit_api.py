@@ -53,6 +53,7 @@ def new_link(start: str, end: str, **fields: Any) -> dict[str, Any]:
         "to_node_id": end,
         "travel_min_s": 10,
         "travel_max_s": 14,
+        "bidirectional": True,
         **fields,
     }
 

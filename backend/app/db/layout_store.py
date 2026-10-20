@@ -63,6 +63,13 @@ def _link_spec(link: Link | LinkIn) -> LinkSpec:
     )
 
 
+def _problems(
+    db: Session, community: Community, nodes: Sequence[NodeSpec], links: Sequence[LinkSpec]
+) -> list[Problem]:
+    """Every rule the proposed nodes and links break, checked against the community's zones."""
+    return check_layout(nodes, links, [zone.id for zone in _zones(db, community.id)])
+
+
 def _reject(problems: Sequence[Problem]) -> None:
     """Raise the D-40 error for these problems: 409 when all are duplicates, else 422."""
     if not problems:
@@ -102,10 +109,11 @@ def save_layout(db: Session, community: Community, body: LayoutIn) -> None:
         for node in body.nodes
         if node.id in taken
     ]
-    problems += check_layout(
+    problems += _problems(
+        db,
+        community,
         [_node_spec(node) for node in body.nodes],
         [_link_spec(link) for link in body.links],
-        [zone.id for zone in _zones(db, community.id)],
     )
     _reject(problems)
 
@@ -156,13 +164,7 @@ def create_node(db: Session, community: Community, body: NodeCreate) -> Node:
         raise ApiError(409, "duplicate_node", "A node with this ID already exists")
     candidate = body.model_copy(update={"id": node_id})
     nodes = _nodes(db, community.id)
-    _reject(
-        check_layout(
-            [*map(_node_spec, nodes), _node_spec(candidate)],
-            [],
-            [zone.id for zone in _zones(db, community.id)],
-        )
-    )
+    _reject(_problems(db, community, [*map(_node_spec, nodes), _node_spec(candidate)], []))
     node = Node(community_id=community.id, **candidate.model_dump())
     db.add(node)
     db.flush()
@@ -179,11 +181,7 @@ def update_node(db: Session, community: Community, node: Node, patch: NodePatch)
     proposed = NodeSpec(
         node.id, changes.get("code", node.code), changes.get("zone_id", node.zone_id)
     )
-    _reject(
-        check_layout(
-            [*map(_node_spec, others), proposed], [], [zone.id for zone in _zones(db, community.id)]
-        )
-    )
+    _reject(_problems(db, community, [*map(_node_spec, others), proposed], []))
     if changes.get("code", node.code) != node.code:
         community.normal_routes = _renamed_routes(
             community.normal_routes, {node.code: changes["code"]}
@@ -198,10 +196,11 @@ def create_link(db: Session, community: Community, body: LinkIn) -> Link:
     if body.id is not None and db.get(Link, body.id) is not None:
         raise ApiError(409, "duplicate_link", "A link with this ID already exists")
     _reject(
-        check_layout(
+        _problems(
+            db,
+            community,
             [_node_spec(node) for node in _nodes(db, community.id)],
             [*map(_link_spec, _links(db, community.id)), _link_spec(body)],
-            [],
         )
     )
     link = Link(community_id=community.id, **body.model_dump(exclude={"id"}))
@@ -226,10 +225,11 @@ def update_link(db: Session, community: Community, link: Link, patch: LinkPatch)
     )
     others = [other for other in _links(db, community.id) if other.id != link.id]
     _reject(
-        check_layout(
+        _problems(
+            db,
+            community,
             [_node_spec(node) for node in _nodes(db, community.id)],
             [*map(_link_spec, others), proposed],
-            [],
         )
     )
     for field, value in changes.items():
