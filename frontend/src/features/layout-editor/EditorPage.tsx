@@ -191,13 +191,21 @@ function LayoutEditor({ session, initial }: { session: Session; initial: Layout 
         onImport={(file) => void onImport(file)}
         onClear={onClear}
       />
-      {state.notice && (
-        <NoticeBar notice={state.notice} onDismiss={() => dispatch({ type: 'dismissNotice' })} />
-      )}
-      {failure && <FailureBar failure={failure} onDismiss={() => setFailure(null)} />}
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-        <div className="h-[55dvh] shrink-0 p-2 md:h-auto md:min-h-0 md:flex-1">
+        <div className="relative h-[55dvh] shrink-0 p-2 md:h-auto md:min-h-0 md:flex-1">
           <EditorCanvas state={state} dispatch={dispatch} newId={newId} />
+          {/* Messages float over the map, so it keeps its size and nodes stay under the pointer. */}
+          {(state.notice || failure) && (
+            <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-col gap-2">
+              {state.notice && (
+                <NoticeBar
+                  notice={state.notice}
+                  onDismiss={() => dispatch({ type: 'dismissNotice' })}
+                />
+              )}
+              {failure && <FailureBar failure={failure} onDismiss={() => setFailure(null)} />}
+            </div>
+          )}
         </div>
         <PropertiesPanel state={state} dispatch={dispatch} />
       </main>
@@ -210,10 +218,10 @@ function NoticeBar({ notice, onDismiss }: { notice: Notice; onDismiss: () => voi
   return (
     <div
       role={error ? 'alert' : 'status'}
-      className={`flex items-center gap-3 border-b px-4 py-2 text-sm ${
+      className={`pointer-events-auto flex items-center gap-3 rounded-md border px-3 py-2 text-sm shadow-lg ${
         error
-          ? 'border-red-500/40 bg-red-500/10 text-red-200'
-          : 'border-sky-500/40 bg-sky-500/10 text-sky-200'
+          ? 'border-red-500/50 bg-red-950/95 text-red-200'
+          : 'border-sky-500/50 bg-sky-950/95 text-sky-200'
       }`}
     >
       <p className="flex-1">{notice.text}</p>
@@ -228,7 +236,7 @@ function FailureBar({ failure, onDismiss }: { failure: Failure; onDismiss: () =>
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 border-b border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-200"
+      className="pointer-events-auto flex max-h-64 items-start gap-3 overflow-y-auto rounded-md border border-red-500/50 bg-red-950/95 px-3 py-2 text-sm text-red-200 shadow-lg"
     >
       <div className="flex-1">
         <p className="font-medium">{failure.title}</p>
