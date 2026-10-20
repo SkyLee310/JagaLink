@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { Run } from '../../api/types'
+import type { Run } from '../api/types'
+
+export const RUN_STATE_TEXT: Record<Run['state'], string> = {
+  ready: 'Ready',
+  playing: 'Playing',
+  paused: 'Paused',
+  finished: 'Finished',
+  stopped: 'Stopped',
+}
 
 /** Date.now(), refreshed every `intervalMs` while `active`. */
 export function useNow(intervalMs: number, active = true): number {

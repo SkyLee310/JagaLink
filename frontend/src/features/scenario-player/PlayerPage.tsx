@@ -9,7 +9,7 @@ import { emptyLiveRun, liveRunReducer, mapHighlights, mapPaths } from '../../lib
 import { useSession } from '../../lib/session'
 import { EventFeed } from './EventFeed'
 import { RunControls } from './RunControls'
-import { useNow } from './runTime'
+import { useNow } from '../../lib/runTime'
 
 /**
  * The supervisor's scenario player (F2, D-66): play, pause, reset; events light up cameras and

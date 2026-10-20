@@ -1,4 +1,4 @@
-import type { Layout, LayoutNode, LayoutZone } from '../../api/types'
+import type { Alert, Layout, LayoutNode, LayoutZone } from '../../api/types'
 
 export interface Size {
   width: number
@@ -57,6 +57,14 @@ export interface MapPath {
   nodeIds: string[]
   /** Still being followed. A closed path is drawn faint and without its label. */
   active: boolean
+}
+
+/** An open alert (F6): a ring at its node, and a dashed arrow to the camera to check next (F5). */
+export interface MapAlert {
+  id: string
+  nodeId: string
+  nextNodeId: string | null
+  severity: Alert['severity']
 }
 
 export interface HeadLabel extends Point {

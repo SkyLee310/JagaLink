@@ -1,19 +1,13 @@
 import { memo, useMemo } from 'react'
 import type { StreamStatus } from '../../api/sse'
 import type { LayoutNode, RunEvent } from '../../api/types'
-import { localTime } from './runTime'
+import { StreamBadge } from '../../components/StreamBadge'
+import { localTime } from '../../lib/runTime'
 
 const TYPE_STYLES: Record<RunEvent['type'], string> = {
   appear: 'bg-emerald-500/15 text-emerald-300',
   dwell: 'bg-amber-500/15 text-amber-300',
   disappear: 'bg-slate-500/20 text-slate-300',
-}
-
-const STATUS_TEXT: Record<StreamStatus, string> = {
-  idle: 'No run',
-  connecting: 'Connecting…',
-  open: 'Live',
-  retrying: 'Reconnecting…',
 }
 
 interface EventFeedProps {
@@ -38,17 +32,8 @@ export const EventFeed = memo(function EventFeed({
     >
       <header className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
         <h2 className="text-sm font-medium">Live events</h2>
-        <span className="text-xs text-slate-500">{events.length}</span>
-        <span
-          className={`ml-auto flex items-center gap-1.5 text-xs ${
-            status === 'open' ? 'text-emerald-300' : 'text-slate-400'
-          }`}
-        >
-          <span
-            className={`size-2 rounded-full ${status === 'open' ? 'bg-emerald-400' : 'bg-slate-500'}`}
-          />
-          {STATUS_TEXT[status]}
-        </span>
+        <span className="mr-auto text-xs text-slate-500">{events.length}</span>
+        <StreamBadge status={status} />
       </header>
       {newestFirst.length === 0 ? (
         <p className="m-auto p-4 text-center text-sm text-slate-500">

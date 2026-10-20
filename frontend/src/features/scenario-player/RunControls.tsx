@@ -2,17 +2,9 @@ import { useState } from 'react'
 import { errorLines } from '../../api/client'
 import { useRunAction, useStartRun } from '../../api/queries'
 import type { Run, Scenario } from '../../api/types'
-import { localTime, runClock, runProgress } from './runTime'
+import { localTime, RUN_STATE_TEXT, runClock, runProgress } from '../../lib/runTime'
 
 const SPEEDS = [1, 5, 10, 30, 60, 120]
-
-const STATE_TEXT: Record<Run['state'], string> = {
-  ready: 'Ready',
-  playing: 'Playing',
-  paused: 'Paused',
-  finished: 'Finished',
-  stopped: 'Stopped',
-}
 
 interface RunControlsProps {
   scenarios: Scenario[]
@@ -136,7 +128,7 @@ export function RunControls({ scenarios, run, fetchedAt, now, timeZone }: RunCon
                 : 'bg-slate-700/60 text-slate-300'
             }`}
           >
-            {active ? STATE_TEXT[active.state] : 'Not started'}
+            {active ? RUN_STATE_TEXT[active.state] : 'Not started'}
           </span>
           <span className="font-mono tabular-nums" aria-label="Simulated time">
             {localTime(clock ?? shown.window_start, timeZone)}

@@ -1,4 +1,4 @@
-import type { ZoneShape } from './mapShapes'
+import type { MapAlert, ZoneShape } from './mapShapes'
 
 /** Colours shared by the read-only map and the layout editor. */
 export const COLORS = {
@@ -13,6 +13,14 @@ export const COLORS = {
   occupied: '#34d399', // emerald-400: an object is in view
   flash: '#facc15', // yellow-400: an event just arrived
   path: '#e879f9', // fuchsia-400: an anonymous path (F3)
+  next: '#f8fafc', // slate-50: the camera to check next (F5)
+}
+
+/** An open alert's ring on the map, by severity (F6). */
+export const ALERT_COLORS: Record<MapAlert['severity'], string> = {
+  high: '#ef4444', // red-500
+  medium: '#f97316', // orange-500
+  low: '#eab308', // yellow-500
 }
 
 export const ZONE_COLORS: Record<ZoneShape['kind'], string> = {

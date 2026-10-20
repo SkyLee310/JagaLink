@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { SseMessage } from '../api/sse'
-import type { RunEvent, Track } from '../api/types'
+import type { Alert, RunEvent, Track } from '../api/types'
+import { GUARD_C, handled, SUPERVISOR_REF, testAlert } from '../test/alerts'
 import {
   emptyLiveRun,
   FLASH_MS,
   type LiveRun,
   liveRunReducer,
+  mapAlerts,
   mapHighlights,
   mapPaths,
+  sortedAlerts,
 } from './liveRun'
 
 let seq = 0
@@ -77,9 +80,9 @@ describe('liveRunReducer', () => {
 
   it('ignores message types it does not know yet and clears on reset', () => {
     const state = play([event('fence', 'appear', 'fence#3')])
-    const other: SseMessage = { id: '9', event: 'alert', data: '{}' }
+    const other: SseMessage = { id: '9', event: 'timeline_ready', data: '{}' }
     expect(liveRunReducer(state, { type: 'message', message: other, receivedAt: 0 })).toBe(state)
-    expect(liveRunReducer(state, { type: 'reset' })).toBe(emptyLiveRun)
+    expect(liveRunReducer(state, { type: 'reset' })).toEqual(emptyLiveRun)
   })
 
   it('keeps the latest state of each path and drops a path once it expires', () => {
@@ -121,6 +124,83 @@ describe('mapPaths', () => {
     expect(mapPaths(state)).toEqual([
       { id: 'a1', label: 'obj-a1', nodeIds: ['fence', 'back'], active: true },
       { id: 'b2', label: 'obj-b2', nodeIds: ['gate'], active: false },
+    ])
+  })
+})
+
+function alertMessage(kind: 'alert' | 'alert_update', alert: Alert): SseMessage {
+  return { id: null, event: kind, data: JSON.stringify(alert) }
+}
+
+describe('alerts', () => {
+  it('keeps the highest version of each alert, whichever order the copies arrive in', () => {
+    const raised = testAlert('a1')
+    const confirmed = handled(raised, 'confirm', GUARD_C, 'Resident')
+    const state = play([alertMessage('alert', raised), alertMessage('alert_update', confirmed)])
+    expect(state.alerts.a1.status).toBe('acked')
+
+    // A reconnect may replay the original message after the newer state.
+    const replayed = liveRunReducer(state, {
+      type: 'message',
+      message: alertMessage('alert', raised),
+      receivedAt: 5000,
+    })
+    expect(replayed).toBe(state)
+    // The answer to an action counts the same way as the stream's copy.
+    expect(liveRunReducer(state, { type: 'alert', alert: confirmed, receivedAt: 5000 })).toBe(state)
+  })
+
+  it('remembers when each alert first arrived, across updates and reconnects', () => {
+    const raised = testAlert('a1')
+    const first = play([alertMessage('alert', raised)], 1000)
+    const updated = liveRunReducer(first, {
+      type: 'alert',
+      alert: handled(raised, 'dismiss', GUARD_C),
+      receivedAt: 4000,
+    })
+    expect(updated.alertSeen).toEqual({ a1: 1000 })
+
+    const reconnected = liveRunReducer(updated, { type: 'reset' })
+    expect(reconnected.alerts).toEqual({})
+    const replayed = liveRunReducer(reconnected, {
+      type: 'message',
+      message: alertMessage('alert_update', updated.alerts.a1),
+      receivedAt: 9000,
+    })
+    expect(replayed.alertSeen).toEqual({ a1: 1000 })
+  })
+
+  it('lists open alerts first, most severe first, then newest; handled ones last', () => {
+    const at = (minute: number) => `2026-10-21T18:1${minute}:00.000Z`
+    const alerts = Object.fromEntries(
+      [
+        testAlert('low-new', { severity: 'low', created_ts: at(5) }),
+        testAlert('high-old', { severity: 'high', created_ts: at(1) }),
+        testAlert('medium', { severity: 'medium', created_ts: at(2) }),
+        testAlert('high-escalated', { severity: 'high', status: 'escalated', created_ts: at(3) }),
+        handled(testAlert('high-done', { severity: 'high', created_ts: at(6) }), 'confirm', GUARD_C),
+        handled(testAlert('low-done', { severity: 'low', created_ts: at(4) }), 'dismiss', GUARD_C),
+      ].map((alert) => [alert.id, alert]),
+    )
+    expect(sortedAlerts(alerts).map((alert) => alert.id)).toEqual([
+      'high-escalated',
+      'high-old',
+      'medium',
+      'low-new',
+      'high-done',
+      'low-done',
+    ])
+  })
+
+  it('marks open alerts on the map with the camera to check next', () => {
+    const alerts = [
+      testAlert('a1', { severity: 'high' }),
+      testAlert('a2', { node_id: 'b', next_node: null, status: 'escalated' }),
+      handled(testAlert('a3'), 'dismiss', SUPERVISOR_REF),
+    ]
+    expect(mapAlerts(alerts)).toEqual([
+      { id: 'a1', nodeId: 'a', nextNodeId: 'b', severity: 'high' },
+      { id: 'a2', nodeId: 'b', nextNodeId: null, severity: 'medium' },
     ])
   })
 })
