@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { Layout, LayoutLink, LayoutNode } from '../../api/types'
 import {
   fitScale,
+  headLabels,
   labelSide,
   MAP_SIZE,
+  type MapPath,
+  pathPoints,
   toMapShapes,
   trimLine,
   wedgeRotation,
@@ -123,5 +126,49 @@ describe('toMapShapes', () => {
         ['main', 'camera', false, -120],
         ['fence', 'sensor', true, -30],
       ])
+  })
+})
+
+const POINTS = new Map([
+  ['a', { x: 0, y: 0 }],
+  ['b', { x: 100, y: 0 }],
+  ['c', { x: 100, y: 50 }],
+])
+
+describe('pathPoints', () => {
+  it('runs through the nodes in order, skipping any no longer in the layout', () => {
+    expect(pathPoints(['a', 'gone', 'b', 'c'], POINTS)).toEqual([0, 0, 100, 0, 100, 50])
+  })
+
+  it('stops the last leg short of its node, leaving room for the arrowhead', () => {
+    expect(pathPoints(['a', 'b', 'c'], POINTS, 10)).toEqual([0, 0, 100, 0, 100, 40])
+  })
+
+  it('is one point until the path reaches a second node', () => {
+    expect(pathPoints(['b'], POINTS, 10)).toEqual([100, 0])
+  })
+})
+
+describe('headLabels', () => {
+  const path = (id: string, nodeIds: string[], active = true): MapPath => ({
+    id,
+    label: `obj-${id}`,
+    nodeIds,
+    active,
+  })
+
+  it('labels the head of each active path and stacks labels that share a node', () => {
+    const paths = [
+      path('p1', ['a', 'b']),
+      path('p2', ['c'], false),
+      path('p3', ['c', 'b', 'gone']),
+      path('p4', ['gone']),
+      path('p5', ['c']),
+    ]
+    expect(headLabels(paths, POINTS)).toEqual([
+      { id: 'p1', text: 'obj-p1', x: 100, y: 0, stack: 0 },
+      { id: 'p3', text: 'obj-p3', x: 100, y: 0, stack: 1 },
+      { id: 'p5', text: 'obj-p5', x: 100, y: 50, stack: 0 },
+    ])
   })
 })
