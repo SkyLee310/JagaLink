@@ -62,10 +62,15 @@ def test_a_new_subscriber_after_a_restart_gets_the_backlog_from_the_database(
 
     backlog = manager.backlog(uuid.UUID(run["id"]), community_id)
 
-    assert [kind for kind, _ in backlog] == ["event"] * 15 + ["track_update"]
+    kinds = [kind for kind, _ in backlog]
+    assert kinds == ["event"] * 15 + ["track_update"] + ["alert_update"] * 3
     assert [data["seq"] for _, data in backlog[:15]] == list(range(1, 16))
-    path = backlog[-1][1]
+    path = backlog[15][1]
     assert (path["status"], len(path["segments"])) == ("closed", 6)
+    # The run's alerts, oldest first; they are not new to a late subscriber.
+    alerts = [data for _, data in backlog[16:]]
+    assert [alert["rule"] for alert in alerts] == ["after_hours", "off_route", "loiter"]
+    assert {alert["track_id"] for alert in alerts} == {path["id"]}
 
 
 def test_the_stream_needs_a_token_and_a_run_of_the_community(

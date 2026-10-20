@@ -26,7 +26,7 @@ def post_events(
     runs: Runs,
 ) -> list[EventOut]:
     """Store a batch of one run's events in the one contract (D-16, D-30), link them into
-    tracks (F3) and push both.
+    tracks (F3), check the rules on each track (F4) and push it all on the run's stream.
 
     422 for a malformed event, an unknown field, a node outside the community, mixed runs, or
     an event earlier than the run's latest; 409 once the run has finished or been replaced.

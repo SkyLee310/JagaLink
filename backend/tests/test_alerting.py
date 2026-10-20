@@ -63,6 +63,7 @@ def test_a_repeat_match_adds_evidence_to_the_open_alert() -> None:
     assert summary(second) == [("alert_update", "after_hours", "medium", ["e1", "e3"])]
     assert second[0].alert.node == "b"
     assert second[0].alert.first_ts == TWO_AM
+    assert second[0].alert.last_ts == second[0].alert.updated_ts == TWO_AM + timedelta(seconds=35)
 
 
 def test_a_second_rule_on_one_track_raises_every_alert_on_it_to_high() -> None:
@@ -77,6 +78,7 @@ def test_a_second_rule_on_one_track_raises_every_alert_on_it_to_high() -> None:
     ]
     reason = "Rule-based: 2 rules matched this path (after-hours entry, off-route movement)."
     assert {c.alert.severity_reason for c in changes} == {reason}
+    assert {c.alert.updated_ts for c in changes} == {TWO_AM + timedelta(seconds=70)}
     assert changes[0].alert.guard == "u-guard-01"
     assert changes[0].alert.walk_s == 0.0
 

@@ -14,7 +14,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from app.engine.graph import Graph
-from app.engine.linker import Sighting, Track
+from app.engine.linker import Changes, Linker, Sighting, Track
 from app.engine.router import GuardPost, NextCameraWeights, Suggestion, assign, next_camera
 from app.engine.rules import RULE_NAMES, Match, RuleKey, RuleSet, Severity, evaluate
 
@@ -29,6 +29,9 @@ class AlertState:
     first_ts: datetime
     """When the rule first matched: the alert's time."""
     last_ts: datetime
+    """When the rule last matched."""
+    updated_ts: datetime
+    """When the alert last changed: a match, or a severity raised by another rule (D-60)."""
     node: str
     """Where the rule last matched: the alert's location."""
     evidence: list[str]
@@ -82,6 +85,8 @@ class Alerter:
             if (severity, reason) != (state.severity, state.severity_reason):
                 state.severity, state.severity_reason = severity, reason
                 changed.setdefault(state.rule, state)
+        for state in changed.values():
+            state.updated_ts = sighting.ts
         new = {state.rule for state in opened}
         updates = [state for rule, state in changed.items() if rule not in new]
         return [AlertChange("alert", _snapshot(state)) for state in opened] + [
@@ -100,6 +105,7 @@ class Alerter:
             rule=match.rule,
             first_ts=match.ts,
             last_ts=match.ts,
+            updated_ts=match.ts,
             node=match.node,
             evidence=list(dict.fromkeys(match.evidence)),
             detail=match.detail,
@@ -134,3 +140,15 @@ class Alerter:
 
 def _snapshot(state: AlertState) -> AlertState:
     return replace(state, evidence=list(state.evidence))
+
+
+def link_and_check(
+    linker: Linker, alerter: Alerter, sighting: Sighting
+) -> tuple[Changes, list[AlertChange]]:
+    """One event through F3 and F4, as the pipeline, the golden files and the evaluation all run
+    it (D-35): link it, forget the alerts of tracks that expired, check the rules on its track."""
+    changes = linker.feed(sighting)
+    for number in changes.expired:
+        alerter.forget(number)
+    assert changes.placed is not None  # feed always places its sighting
+    return changes, alerter.observe(changes.placed, sighting)

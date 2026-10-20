@@ -368,7 +368,7 @@ export interface paths {
         /**
          * Post Events
          * @description Store a batch of one run's events in the one contract (D-16, D-30), link them into
-         *     tracks (F3) and push both.
+         *     tracks (F3), check the rules on each track (F4) and push it all on the run's stream.
          *
          *     422 for a malformed event, an unknown field, a node outside the community, mixed runs, or
          *     an event earlier than the run's latest; 409 once the run has finished or been replaced.
@@ -420,6 +420,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rules
+         * @description The community's three anomaly rules (F4), each with its thresholds and the rule-based
+         *     severity of its alerts (D-60).
+         */
+        get: operations["get_rules_api_v1_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rules/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Rule
+         * @description Change a rule's thresholds, or switch it on or off; the next batch of events runs on them
+         *     with no code change (F4). Fields left out stay as they are. 422 when the thresholds are not
+         *     valid, with each problem in `details`.
+         */
+        put: operations["put_rule_api_v1_rules__key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alerts
+         * @description Alerts (F4–F6) in the order they were raised, each with its rule, severity, guard, next
+         *     camera and evidence.
+         */
+        get: operations["get_alerts_api_v1_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alert */
+        get: operations["get_alert_api_v1_alerts__alert_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Act On Alert
+         * @description Confirm or dismiss an alert with an optional one-line reason (F6). The action is stamped
+         *     with the run's clock, so the incident timeline can place it (D-62), and every open screen
+         *     gets the change as `alert_update`. 409 when the alert has been handled already.
+         */
+        post: operations["act_on_alert_api_v1_alerts__alert_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream": {
         parameters: {
             query?: never;
@@ -444,6 +547,157 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AfterHoursParams
+         * @description An appearance in a zone of one of `zone_kinds` from `start` to `end` in the community's
+         *     time zone; the period may span midnight (D-54).
+         */
+        AfterHoursParams: {
+            /**
+             * Start
+             * Format: time
+             */
+            start: string;
+            /**
+             * End
+             * Format: time
+             */
+            end: string;
+            /** Zone Kinds */
+            zone_kinds: ("street" | "gate" | "lane")[];
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+        };
+        /** AfterHoursRule */
+        AfterHoursRule: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            key: "after_hours";
+            /** Name */
+            name: string;
+            /** Enabled */
+            enabled: boolean;
+            params: components["schemas"]["AfterHoursParams"];
+        };
+        /**
+         * AlertActionIn
+         * @description Confirm or dismiss, with an optional one-line reason (F6).
+         */
+        AlertActionIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "dismiss";
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** AlertActionOut */
+        AlertActionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "dismiss";
+            /** Reason */
+            reason: string;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            user: components["schemas"]["UserRef"];
+        };
+        /**
+         * AlertOut
+         * @description One alert: a rule matching one anonymous path (D-18), the guard it went to and the
+         *     camera to check next (F5). Keep the copy with the highest `version`: the stream may deliver
+         *     an older one after a newer one.
+         */
+        AlertOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Version */
+            version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "acked" | "dismissed" | "escalated";
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "after_hours" | "loiter" | "off_route";
+            /** Rule Name */
+            rule_name: string;
+            /** Detail */
+            detail: string;
+            /** Score */
+            score: number | null;
+            /** Track Id */
+            track_id: string | null;
+            /** Track Anon Id */
+            track_anon_id: string | null;
+            /**
+             * Node Id
+             * Format: uuid
+             */
+            node_id: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** Severity Reason */
+            severity_reason: string;
+            /**
+             * Triage Status
+             * @enum {string}
+             */
+            triage_status: "pending" | "agent" | "fallback";
+            assigned_user: components["schemas"]["UserRef"] | null;
+            /** Walk S */
+            walk_s: number | null;
+            next_node: components["schemas"]["NextNodeOut"] | null;
+            /** Evidence Event Ids */
+            evidence_event_ids: string[];
+            /**
+             * Created Ts
+             * Format: date-time
+             */
+            created_ts: string;
+            /**
+             * Updated Ts
+             * Format: date-time
+             */
+            updated_ts: string;
+            /** Acked Ts */
+            acked_ts: string | null;
+            /** Actions */
+            actions: components["schemas"]["AlertActionOut"][];
+        };
         /** CommunityOut */
         CommunityOut: {
             /**
@@ -775,6 +1029,62 @@ export interface components {
             /** Distance M */
             distance_m?: number | null;
         };
+        /**
+         * LoiterParams
+         * @description At least `threshold_s` in one zone within the last `window_s` (D-52).
+         */
+        LoiterParams: {
+            /** Threshold S */
+            threshold_s: number;
+            /** Window S */
+            window_s: number;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+        };
+        /** LoiterRule */
+        LoiterRule: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            key: "loiter";
+            /** Name */
+            name: string;
+            /** Enabled */
+            enabled: boolean;
+            params: components["schemas"]["LoiterParams"];
+        };
+        /**
+         * NextNodeBasis
+         * @description Why this camera comes next (D-20, D-57): the walk and distance from the alert's node, the
+         *     share of normal routes that take this step, and how well it keeps the direction of travel.
+         */
+        NextNodeBasis: {
+            /** Walk S */
+            walk_s: number;
+            /** Distance M */
+            distance_m: number | null;
+            /** Transition Share */
+            transition_share: number;
+            /** Direction */
+            direction: number;
+            /** Backtrack */
+            backtrack: boolean;
+            /** Score */
+            score: number;
+        };
+        /** NextNodeOut */
+        NextNodeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            basis: components["schemas"]["NextNodeBasis"];
+        };
         /** NodeCreate */
         NodeCreate: {
             /** Id */
@@ -904,6 +1214,42 @@ export interface components {
             name: string;
             /** Nodes */
             nodes: string[];
+        };
+        /**
+         * OffRouteParams
+         * @description A step between two nodes that no normal route takes (D-53).
+         */
+        OffRouteParams: {
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+        };
+        /** OffRouteRule */
+        OffRouteRule: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            key: "off_route";
+            /** Name */
+            name: string;
+            /** Enabled */
+            enabled: boolean;
+            params: components["schemas"]["OffRouteParams"];
+        };
+        /**
+         * RuleUpdate
+         * @description What to change; leave out what stays. Each field in `params` replaces the stored one.
+         */
+        RuleUpdate: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * RunCreate
@@ -1115,6 +1461,23 @@ export interface components {
             expires_at: string;
             /** Segments */
             segments: components["schemas"]["SegmentOut"][];
+        };
+        /** UserRef */
+        UserRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "guard" | "supervisor";
         };
         /** ValidationError */
         ValidationError: {
@@ -2450,6 +2813,241 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_rules_api_v1_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["AfterHoursRule"] | components["schemas"]["LoiterRule"] | components["schemas"]["OffRouteRule"])[];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_rule_api_v1_rules__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "after_hours" | "loiter" | "off_route";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterHoursRule"] | components["schemas"]["LoiterRule"] | components["schemas"]["OffRouteRule"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_alerts_api_v1_alerts_get: {
+        parameters: {
+            query?: {
+                run_id?: string | null;
+                status?: ("new" | "acked" | "dismissed" | "escalated") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_alert_api_v1_alerts__alert_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    act_on_alert_api_v1_alerts__alert_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertActionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

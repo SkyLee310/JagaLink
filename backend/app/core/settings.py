@@ -6,6 +6,9 @@ from typing import Literal, Self
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.engine.router import NextCameraWeights
+from app.engine.rules import Severity
+
 DEV_SESSION_SECRET = "dev-only-session-secret"
 
 
@@ -19,6 +22,11 @@ class Settings(BaseSettings):
     session_secret: str = DEV_SESSION_SECRET
     # D-56: a track is deleted this long after its last sighting, in event time.
     track_ttl_s: float = Field(default=24 * 3600, gt=0)
+    # D-57: how the next-camera score weighs direction, backtracking, walk and route share,
+    # as JSON, e.g. NEXT_CAMERA_WEIGHTS='{"walk": 1.0}'.
+    next_camera_weights: NextCameraWeights = NextCameraWeights()
+    # D-60: every alert on a track takes this severity once two or more rules match it.
+    multi_rule_severity: Severity = "high"
 
     @field_validator("database_url")
     @classmethod

@@ -22,12 +22,11 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError
 from app.core.hub import Hub, Item
 from app.core.pipeline import Pipelines
-from app.db import event_store, track_store
+from app.db import alert_store, event_store, track_store
 from app.db.layout_store import export_layout
-from app.db.models import AppUser, Community, Event, Node, Scenario, ScenarioRun, Track
+from app.db.models import Anomaly, AppUser, Community, Event, Node, Scenario, ScenarioRun, Track
 from app.db.session import get_engine
 from app.engine.clock import SimClock
-from app.engine.linker import DEFAULT_TTL_S
 from app.schemas.events import EventIn
 from app.schemas.scenarios import RunOut, ScenarioOut
 from app.sim.player import Player, Timer, WallTimer
@@ -141,16 +140,20 @@ def apply_roster(db: Session, community: Community, file: ScenarioFile) -> None:
 
 def clear_run(db: Session, run_id: uuid.UUID) -> None:
     """Delete what a run produced, so it can play again from the start."""
+    db.execute(delete(Anomaly).where(Anomaly.run_id == run_id))  # with their alerts and actions
     db.execute(delete(Track).where(Track.run_id == run_id))
     db.execute(delete(Event).where(Event.run_id == run_id))
 
 
 def run_backlog(db: Session, run_id: uuid.UUID) -> list[Item]:
-    """The stream messages that bring a new subscriber up to date with the run (D-36)."""
+    """The stream messages that bring a new subscriber up to date with the run (D-36). Its
+    alerts come as `alert_update`: they are not new to the run."""
     events = db.scalars(select(Event).where(Event.run_id == run_id).order_by(Event.seq))
     items = [event_store.event_message(event) for event in events]
+    items += [track_store.track_message(track) for track in track_store.run_tracks(db, run_id)]
     return items + [
-        track_store.track_message(track) for track in track_store.run_tracks(db, run_id)
+        alert_store.alert_message("alert_update", alert)
+        for alert in alert_store.run_alerts(db, run_id)
     ]
 
 
@@ -160,12 +163,12 @@ class RunManager:
         hub: Hub | None = None,
         timer: Timer | None = None,
         session_scope: SessionScope = default_scope,
-        track_ttl_s: float = DEFAULT_TTL_S,
+        pipelines: Pipelines | None = None,
     ) -> None:
         self.hub = hub or Hub()
         self.timer: Timer = timer or WallTimer()
         self.session_scope = session_scope
-        self.pipelines = Pipelines(track_ttl_s)
+        self.pipelines = pipelines or Pipelines()
         self.loop: asyncio.AbstractEventLoop | None = None
         self.live: dict[uuid.UUID, LiveRun] = {}
         self.prepared: dict[uuid.UUID, Prepared] = {}
@@ -290,7 +293,7 @@ class RunManager:
             emitted, clock = snapshot.emitted, snapshot.clock
         else:
             emitted = event_store.event_count(db, run.id)
-            clock = self._resting_clock(db, run, prepared)
+            clock = self._resting_clock(db, community, run)
         return RunOut(
             id=run.id,
             scenario_id=scenario.id,
@@ -306,6 +309,12 @@ class RunManager:
             events_emitted=emitted,
             events_total=len(prepared.events),
         )
+
+    def clock(self, db: Session, community: Community, run: ScenarioRun) -> datetime:
+        """Where the run's clock stands, in event time (D-31): its player's position, or where
+        the run rests."""
+        snapshot = self._on_loop(self._snapshot(run.id)) if self.loop else None
+        return snapshot.clock if snapshot is not None else self._resting_clock(db, community, run)
 
     def backlog(self, run_id: uuid.UUID, community_id: uuid.UUID) -> list[Item]:
         """A run's stream backlog, read with a session of its own (a stream outlives requests)."""
@@ -324,23 +333,23 @@ class RunManager:
             self.prepared[run.id] = prepared
         return prepared
 
-    def _resting_clock(self, db: Session, run: ScenarioRun, prepared: Prepared) -> datetime:
+    def _resting_clock(self, db: Session, community: Community, run: ScenarioRun) -> datetime:
         """Where a run without a player stands: its start, its end, or its latest event."""
         if run.state == "ready":
-            return prepared.window_start
+            return self._prepared(db, community, run).window_start
         if run.state == "finished":
-            return prepared.window_end
+            return self._prepared(db, community, run).window_end
         last = db.scalar(
             select(Event.ts).where(Event.run_id == run.id).order_by(Event.seq.desc()).limit(1)
         )
-        return last or prepared.window_start
+        return last or self._prepared(db, community, run).window_start
 
     def _launch(
         self, db: Session, community: Community, run: ScenarioRun, prepared: Prepared
     ) -> RunOut:
         """Start a player from the run's latest stored event; describe the run first."""
         emitted = event_store.event_count(db, run.id)
-        position = self._resting_clock(db, run, prepared)
+        position = self._resting_clock(db, community, run)
         backlog = run_backlog(db, run.id) if self.hub.channel(run.id) is None else []
         out = self.describe(db, community, run)
         clock = SimClock(position, anchor=0.0, speed=run.speed)
