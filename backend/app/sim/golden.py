@@ -3,18 +3,30 @@
     uv run python -m app.sim.golden     rewrite every golden file from the current code
 
 `<code>.events.jsonl` holds one event per line (F2); `<code>.paths.jsonl` holds one linked track
-per line (F3). Rewrite them only for an intended change, and say so in the commit (AGENTS.md).
+per line (F3); `<code>.alerts.jsonl` holds one alert per line (F4, F5). Rewrite them only for an
+intended change, and say so in the commit (AGENTS.md).
 """
 
 import json
+from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
+from app.engine.alerting import AlertChange, Alerter, AlertState, link_and_check
 from app.engine.graph import Graph
-from app.engine.linker import Sighting, Track, link_all
+from app.engine.linker import Linker, Sighting, Track, link_all
+from app.engine.router import GuardPost
+from app.engine.rules import RuleKey, RuleSet
 from app.schemas.layout import LayoutFile
-from app.sim.scenario import SCENARIO_DIR, graph_from_layout, load_scenario, scenario_paths
+from app.sim.scenario import (
+    SCENARIO_DIR,
+    ScenarioFile,
+    graph_from_layout,
+    load_scenario,
+    scenario_paths,
+)
 from app.sim.script import Script, ScriptEvent, build_script
 
 GOLDEN_DIR = SCENARIO_DIR / "golden"
@@ -39,6 +51,10 @@ def paths_path(code: str) -> Path:
     return GOLDEN_DIR / f"{code}.paths.jsonl"
 
 
+def alerts_path(code: str) -> Path:
+    return GOLDEN_DIR / f"{code}.alerts.jsonl"
+
+
 def seeded_layout() -> LayoutFile:
     return LayoutFile.model_validate_json(LAYOUT_PATH.read_text(encoding="utf-8"))
 
@@ -47,15 +63,20 @@ def seeded_graph() -> Graph:
     return graph_from_layout(seeded_layout())
 
 
+def seeded_scenarios() -> dict[str, ScenarioFile]:
+    """Every scenario file, by scenario code."""
+    return {scenario.code: scenario for scenario in map(load_scenario, scenario_paths())}
+
+
 def seeded_scripts() -> dict[str, Script]:
     """Every scenario's script on the seeded layout, by scenario code."""
     layout = seeded_layout()
     graph = graph_from_layout(layout)
-    scripts = {}
-    for path in scenario_paths():
-        scenario = load_scenario(path)
-        scripts[scenario.code] = build_script(scenario, graph, layout.community.timezone)
-    return scripts
+    timezone = layout.community.timezone
+    return {
+        code: build_script(scenario, graph, timezone)
+        for code, scenario in seeded_scenarios().items()
+    }
 
 
 def render(script: Script) -> str:
@@ -96,13 +117,71 @@ def render_paths(script: Script, graph: Graph) -> str:
     return "".join(path_line(track, owner) + "\n" for track in script_tracks(script, graph))
 
 
+def roster_posts(scenario: ScenarioFile) -> list[GuardPost]:
+    """Where the scenario's roster puts each guard for the run (D-58)."""
+    return [GuardPost(entry.user, entry.node, entry.on_duty) for entry in scenario.roster]
+
+
+def script_alerts(
+    events: Sequence[ScriptEvent], graph: Graph, guards: Sequence[GuardPost], timezone: str
+) -> list[AlertChange]:
+    """Every alert change the events raise, in order, as the pipeline makes them on the seeded
+    rules (D-35); event IDs are posting order, as in `script_sightings`."""
+    linker = Linker(graph)
+    alerter = Alerter(graph, RuleSet(), guards, ZoneInfo(timezone))
+    found: list[AlertChange] = []
+    for sighting in script_sightings(events):
+        found += link_and_check(linker, alerter, sighting)[1]
+    return found
+
+
+def opened_alerts(changes: Sequence[AlertChange]) -> list[tuple[AlertState, AlertState, int]]:
+    """Each alert in the order it opened: as it opened, as it ended, and how many updates."""
+    first: dict[tuple[int, RuleKey], AlertState] = {}
+    last: dict[tuple[int, RuleKey], AlertState] = {}
+    updates: Counter[tuple[int, RuleKey]] = Counter()
+    for change in changes:
+        key = (change.alert.track, change.alert.rule)
+        if change.kind == "alert":
+            first[key] = change.alert
+        else:
+            updates[key] += 1
+        last[key] = change.alert
+    return [(state, last[key], updates[key]) for key, state in first.items()]
+
+
+def alert_line(opened: AlertState, final: AlertState, updates: int, owner: dict[str, str]) -> str:
+    """What the guard first sees (track, rule, time, node, severity, guard, walk, next camera),
+    then how it ended (updates, severity, last change, evidence count) and the true objects
+    behind its evidence."""
+    nearest = opened.next_camera.node if opened.next_camera else None
+    first = [opened.track, opened.rule, iso(opened.first_ts), opened.node, opened.severity]
+    first += [opened.guard, opened.walk_s, nearest]
+    end = [updates, final.severity, iso(final.updated_ts), len(final.evidence)]
+    objects = sorted({owner[event_id] for event_id in final.evidence})
+    return json.dumps([*first, *end, objects], separators=(",", ":"))
+
+
+def render_alerts(script: Script, scenario: ScenarioFile, graph: Graph, timezone: str) -> str:
+    changes = script_alerts(script.events, graph, roster_posts(scenario), timezone)
+    owner = owners(script)
+    return "".join(
+        alert_line(opened, final, updates, owner) + "\n"
+        for opened, final, updates in opened_alerts(changes)
+    )
+
+
 def main() -> None:
     GOLDEN_DIR.mkdir(exist_ok=True)
-    graph = seeded_graph()
+    layout = seeded_layout()
+    graph = graph_from_layout(layout)
+    scenarios = seeded_scenarios()
     for code, script in seeded_scripts().items():
+        alerts = render_alerts(script, scenarios[code], graph, layout.community.timezone)
         for path, text, what in (
             (golden_path(code), render(script), f"{len(script.events)} events"),
             (paths_path(code), render_paths(script, graph), "paths"),
+            (alerts_path(code), alerts, "alerts"),
         ):
             with path.open("w", encoding="utf-8", newline="\n") as handle:
                 handle.write(text)

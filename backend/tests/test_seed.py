@@ -1,7 +1,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AppUser, Link, Node, Scenario
+from app.db.models import AppUser, Link, Node, RuleConfig, Scenario
 from app.db.seed import SeedReport, seed, seed_id
 
 
@@ -12,7 +12,7 @@ def node_by_code(db: Session, code: str) -> Node:
 def test_seed_loads_taman_simulasi(seeded: SeedReport) -> None:
     assert seeded.created
     assert (seeded.zones, seeded.nodes, seeded.links, seeded.users) == (6, 20, 23, 4)
-    assert seeded.scenarios == 2
+    assert (seeded.scenarios, seeded.rules) == (2, 3)
     assert seeded.community_id == seed_id("taman-simulasi", "community")
 
 
@@ -66,3 +66,29 @@ def test_scenarios_follow_their_files(db: Session, seeded: SeedReport) -> None:
 
     assert again.scenarios == 2
     assert s1.name == "S1 · Vehicle circling the south lanes"
+
+
+def rule(db: Session, key: str) -> RuleConfig | None:
+    return db.scalars(select(RuleConfig).where(RuleConfig.rule_key == key)).one_or_none()
+
+
+def test_rules_start_at_the_engine_defaults_and_keep_their_edits(
+    db: Session, seeded: SeedReport
+) -> None:
+    loiter = rule(db, "loiter")
+    assert loiter is not None
+    assert loiter.params == {"threshold_s": 180.0, "window_s": 600.0, "severity": "medium"}
+    loiter.params = {**loiter.params, "threshold_s": 60.0}
+    db.execute(delete(RuleConfig).where(RuleConfig.rule_key == "off_route"))
+    db.flush()
+
+    again = seed(db)
+
+    assert again.rules == 3
+    assert db.scalar(select(RuleConfig.params).where(RuleConfig.rule_key == "loiter")) == {
+        "threshold_s": 60.0,
+        "window_s": 600.0,
+        "severity": "medium",
+    }
+    restored = rule(db, "off_route")
+    assert restored is not None and restored.params == {"severity": "high"}

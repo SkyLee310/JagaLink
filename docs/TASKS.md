@@ -80,13 +80,13 @@ Needs: D-57, D-58, D-59, D-60, D-67.
 
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
-| M4.1 | Rule engine (pure): `after_hours`, `loiter`, `off_route` (D-52–D-54); each anomaly carries its rule and evidence event IDs. | Unit tests per rule, including each threshold's boundary. | | ⬜ |
-| M4.2 | Migration for `rule_config` (seeded), `anomaly`, `alert`, `alert_action`; `GET /rules`, `PUT /rules/{key}`. | Changing a threshold through the API changes the outcome with no code change. | | ⬜ |
-| M4.3 | Router (pure): nearest on-duty guard (D-58), supervisor escalation, next-camera score with basis (D-57). | Unit tests: nearest guard wins; no guard → escalated; next camera and basis returned. | | ⬜ |
-| M4.4 | Wire anomalies into alerts with de-duplication (D-59) and rule-based severity (D-60); `alert` and `alert_update` over SSE; `GET /alerts`, `GET /alerts/{id}`. | Golden tests: S1 and S2 raise exactly their expected alerts. | | ⬜ |
-| M4.5 | Guard console: alert cards (location, rule, severity, next camera), map highlight, notification cue. | 5 alerts fit without scrolling at 1366×768 (D-67). | | ⬜ |
-| M4.6 | Actions: `POST /alerts/{id}/actions` (confirm or dismiss, one-line reason); status syncs to every open screen. | One click plus a reason updates the card in two open browsers. | | ⬜ |
-| M4.7 | Latency check: Playwright times event ingest → card on screen. | ≤2 s on the deployed app. | | ⬜ |
+| M4.1 | Rule engine (pure): `after_hours`, `loiter`, `off_route` (D-52–D-54); each anomaly carries its rule and evidence event IDs. | Unit tests per rule, including each threshold's boundary. | @agent-a | ✅ 2026-10-20 |
+| M4.2 | Migration for `rule_config` (seeded), `anomaly`, `alert`, `alert_action`; `GET /rules`, `PUT /rules/{key}`. | Changing a threshold through the API changes the outcome with no code change. | @agent-a | ✅ 2026-10-20 |
+| M4.3 | Router (pure): nearest on-duty guard (D-58), supervisor escalation, next-camera score with basis (D-57). | Unit tests: nearest guard wins; no guard → escalated; next camera and basis returned. | @agent-a | ✅ 2026-10-20 |
+| M4.4 | Wire anomalies into alerts with de-duplication (D-59) and rule-based severity (D-60); `alert` and `alert_update` over SSE; `GET /alerts`, `GET /alerts/{id}`. | Golden tests: S1 and S2 raise exactly their expected alerts. | @agent-a | ✅ 2026-10-20 |
+| M4.5 | Guard console: alert cards (location, rule, severity, next camera), map highlight, notification cue. | 5 alerts fit without scrolling at 1366×768 (D-67). | @agent-a | ✅ 2026-10-20 |
+| M4.6 | Actions: `POST /alerts/{id}/actions` (confirm or dismiss, one-line reason); status syncs to every open screen. | One click plus a reason updates the card in two open browsers. | @agent-a | ✅ 2026-10-20 |
+| M4.7 | Latency check: Playwright times event ingest → card on screen. | ≤2 s on the deployed app. | @agent-a | ⛔ waits on M0.10 |
 
 ### M5 · The agent ranks and explains (F7) — target Thu 22 Oct, then code freeze
 

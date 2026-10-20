@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../lib/session'
 import { apiFetch } from './client'
 import type {
+  Alert,
+  AlertActionInput,
   Layout,
   LayoutFile,
   LayoutInput,
@@ -104,5 +106,16 @@ export function useRunAction() {
         body: speed === undefined ? undefined : JSON.stringify({ speed }),
       }),
     onSuccess: (run) => queryClient.setQueryData(CURRENT_RUN, run),
+  })
+}
+
+/**
+ * Confirms or dismisses an alert with an optional one-line reason (F6). The answer is the alert
+ * as stored; every other open screen gets it as `alert_update`.
+ */
+export function useAlertAction() {
+  return useMutation({
+    mutationFn: ({ alertId, ...body }: AlertActionInput & { alertId: string }) =>
+      apiFetch<Alert>(`/alerts/${alertId}/actions`, { method: 'POST', body: JSON.stringify(body) }),
   })
 }

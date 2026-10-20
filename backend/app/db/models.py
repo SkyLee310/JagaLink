@@ -23,6 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.engine.events import EventSource, EventType, ObjectClass
 from app.engine.linker import TrackStatus
+from app.engine.rules import RuleKey, Severity
 
 ZoneKind = Literal["street", "gate", "lane"]
 NodeKind = Literal["camera", "sensor"]
@@ -30,6 +31,9 @@ NodeStatus = Literal["online", "offline"]
 Role = Literal["guard", "supervisor"]
 RunMode = Literal["live", "eval"]
 RunState = Literal["ready", "playing", "paused", "finished", "stopped"]
+AlertStatus = Literal["new", "acked", "dismissed", "escalated"]
+TriageStatus = Literal["pending", "agent", "fallback"]
+ActionKind = Literal["confirm", "dismiss"]
 
 
 def one_of(column: str, values: Any) -> str:
@@ -252,3 +256,104 @@ class TrackSegment(Base):
     enter_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     exit_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid))
+
+
+class RuleConfig(Base):
+    """One rule's thresholds for a community (F4): editable without code (D-18)."""
+
+    __tablename__ = "rule_config"
+    __table_args__ = (
+        UniqueConstraint("community_id", "rule_key"),
+        CheckConstraint(one_of("rule_key", RuleKey), name="rule_key"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    rule_key: Mapped[str] = mapped_column(Text)
+    params: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sql("true"))
+
+
+class Anomaly(Base):
+    """A rule matching one track: its rule and every event it relied on (D-18). One row per
+    (track, rule); later matches add evidence (D-59). It outlives its track (D-56)."""
+
+    __tablename__ = "anomaly"
+    __table_args__ = (
+        UniqueConstraint("run_id", "track_number", "rule_key"),
+        CheckConstraint(one_of("rule_key", RuleKey), name="rule_key"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scenario_run.id", ondelete="CASCADE"))
+    # Cleared when the track expires; the anomaly and its alert stay (D-56).
+    track_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("track.id", ondelete="SET NULL"))
+    track_number: Mapped[int] = mapped_column(Integer)
+    rule_key: Mapped[str] = mapped_column(Text)
+    # When the rule first matched, and when it last did.
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Where it last matched: the alert's location.
+    node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("node.id", ondelete="CASCADE"))
+    evidence_event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid))
+    score: Mapped[float | None] = mapped_column(Double)
+    detail: Mapped[str] = mapped_column(Text)
+
+
+class Alert(Base):
+    """What a guard sees and acts on (F5, F6): one per anomaly. The severity starts rule-based
+    and provisional (D-60, D-61); `version` grows with every change, so a screen keeps the
+    newest copy whatever order the stream delivers them in."""
+
+    __tablename__ = "alert"
+    __table_args__ = (
+        CheckConstraint(one_of("status", AlertStatus), name="status"),
+        CheckConstraint(one_of("severity", Severity), name="severity"),
+        CheckConstraint(one_of("triage_status", TriageStatus), name="triage_status"),
+        Index("ix_alert_run_id_created_ts", "run_id", "created_ts"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scenario_run.id", ondelete="CASCADE"))
+    anomaly_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("anomaly.id", ondelete="CASCADE"), unique=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=sql("1"))
+    status: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(Text)
+    severity_reason: Mapped[str] = mapped_column(Text)
+    triage_status: Mapped[str] = mapped_column(Text, default="pending", server_default="pending")
+    # The nearest on-duty guard, or the supervisor when the alert escalated (D-19).
+    assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL")
+    )
+    # The assigned guard's walking time to the alert's node, in seconds.
+    walk_s: Mapped[float | None] = mapped_column(Double)
+    next_node_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("node.id", ondelete="SET NULL")
+    )
+    next_node_basis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Event time: when the rule first matched, and when the alert last changed.
+    created_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    acked_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AlertAction(Base):
+    """A guard's confirm or dismiss, with a one-line reason; it joins the incident timeline."""
+
+    __tablename__ = "alert_action"
+    __table_args__ = (CheckConstraint(one_of("action", ActionKind), name="action"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    alert_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("alert.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    action: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text, default="", server_default="")
+    # The run's clock (event time) when the guard acted, so the timeline can place it.
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

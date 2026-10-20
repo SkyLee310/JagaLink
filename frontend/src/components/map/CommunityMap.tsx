@@ -8,13 +8,16 @@ import {
   headLabels,
   labelSide,
   MAP_SIZE,
+  type MapAlert,
   type MapPath,
   type NodeShape,
   pathPoints,
   toMapShapes,
   trimLine,
 } from './mapShapes'
-import { COLORS, LABEL_MIN_SCALE, LABEL_WIDTH, ZONE_COLORS } from './mapTheme'
+import { ALERT_COLORS, COLORS, LABEL_MIN_SCALE, LABEL_WIDTH, ZONE_COLORS } from './mapTheme'
+
+const SEVERITY_ORDER: Record<MapAlert['severity'], number> = { low: 0, medium: 1, high: 2 }
 
 /** Nodes to light up on the map, by node ID. */
 export interface MapHighlights {
@@ -29,10 +32,12 @@ interface CommunityMapProps {
   highlights?: MapHighlights
   /** Anonymous paths (F3), drawn along the links with their ID at the head. */
   paths?: readonly MapPath[]
+  /** Open alerts (F6), each ringed in its severity colour with an arrow to its next camera. */
+  alerts?: readonly MapAlert[]
 }
 
 /** Read-only plan of one community: background, zones, links, cameras and sensors (F1 view). */
-export function CommunityMap({ layout, highlights, paths = [] }: CommunityMapProps) {
+export function CommunityMap({ layout, highlights, paths = [], alerts = [] }: CommunityMapProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const scale = fitScale(useElementSize(frameRef))
   const background = useImage(layout.community.map_image_url)
@@ -48,6 +53,14 @@ export function CommunityMap({ layout, highlights, paths = [] }: CommunityMapPro
     .sort((a, b) => Number(a.active) - Number(b.active))
     .map((path) => ({ ...path, points: pathPoints(path.nodeIds, nodesById, radius + onScreen(2)) }))
     .filter((path) => path.points.length >= 4)
+  // The most severe alert draws last, on top.
+  const alertMarks = [...alerts]
+    .sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
+    .flatMap((alert) => {
+      const node = nodesById.get(alert.nodeId)
+      const next = alert.nextNodeId ? nodesById.get(alert.nextNodeId) : undefined
+      return node ? [{ id: alert.id, color: ALERT_COLORS[alert.severity], node, next }] : []
+    })
 
   return (
     <div
@@ -135,6 +148,9 @@ export function CommunityMap({ layout, highlights, paths = [] }: CommunityMapPro
                   flashing={highlights.flashing.has(node.id)}
                 />
               ))}
+            {alertMarks.map((mark) => (
+              <AlertMark key={`alert-${mark.id}`} {...mark} radius={radius} unit={onScreen(1)} />
+            ))}
             {shapes.nodes.map((node) => (
               <NodeMarker key={node.id} node={node} radius={radius} />
             ))}
@@ -207,6 +223,53 @@ function NodeHighlight({
           opacity={0.9}
         />
       )}
+    </>
+  )
+}
+
+/**
+ * An open alert: a ring in its severity colour at the node that raised it, and a dashed arrow to
+ * a dashed ring at the camera to check next (F5). `unit` is one screen pixel in map units.
+ */
+function AlertMark({
+  color,
+  node,
+  next,
+  radius,
+  unit,
+}: {
+  color: string
+  node: NodeShape
+  next?: NodeShape
+  radius: number
+  unit: number
+}) {
+  const ring = radius * 2.3
+  return (
+    <>
+      {next && (
+        <>
+          <Arrow
+            points={trimLine([node.x, node.y, next.x, next.y], ring + unit * 2, ring + unit * 3)}
+            stroke={color}
+            fill={color}
+            strokeWidth={unit * 2.5}
+            dash={[unit * 7, unit * 5]}
+            pointerLength={unit * 10}
+            pointerWidth={unit * 10}
+          />
+          <Circle
+            x={next.x}
+            y={next.y}
+            radius={ring}
+            stroke={COLORS.next}
+            strokeWidth={unit * 2.5}
+            dash={[unit * 5, unit * 4]}
+          />
+        </>
+      )}
+      <Circle x={node.x} y={node.y} radius={ring} fill={color} opacity={0.2} />
+      <Circle x={node.x} y={node.y} radius={ring} stroke={color} strokeWidth={unit * 3.5} />
     </>
   )
 }

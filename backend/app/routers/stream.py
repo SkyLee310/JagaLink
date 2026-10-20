@@ -1,9 +1,9 @@
 """The live stream (D-36): `GET /stream?run_id=` as Server-Sent Events.
 
 The browser reads it with a fetch-based client so it can send the bearer token. A client first
-gets the run's backlog, then each message as it is published; a comment line every 15 s keeps
-idle connections open. The stream ends when the run is reset or replaced, and the client
-reconnects to start afresh.
+gets an `: open` comment and the run's backlog, then each message as it is published; a comment
+line every 15 s keeps idle connections open. The stream ends when the run is reset or replaced,
+and the client reconnects to start afresh.
 """
 
 import asyncio
@@ -24,6 +24,9 @@ from app.schemas.common import error_responses
 router = APIRouter(tags=["stream"])
 
 PING_S = 15.0
+# Sent first: some browsers' network filters and proxies hold a response until its body starts,
+# which would leave the client of a run with nothing to replay waiting up to PING_S to connect.
+OPENED = ": open\n\n"
 
 
 async def frames(
@@ -34,6 +37,7 @@ async def frames(
     ping_s: float = PING_S,
 ) -> AsyncIterator[str]:
     try:
+        yield OPENED
         for message in backlog:
             yield message.frame()
         while True:

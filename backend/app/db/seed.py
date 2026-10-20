@@ -1,6 +1,7 @@
-"""Load the seeded community (Taman Simulasi, D-69), its staff and its scenarios.
+"""Load the seeded community (Taman Simulasi, D-69), its staff, rules and scenarios.
 
 python -m app.db.seed            insert the community if it is missing; refresh its scenarios
+                                 and add any rule it lacks
 python -m app.db.seed --reset    delete it and load it again (clean demo state, D-27)
 """
 
@@ -13,7 +14,8 @@ from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AppUser, Community, Link, Node, Role, Scenario, Zone
+from app.db.models import AppUser, Community, Link, Node, Role, RuleConfig, Scenario, Zone
+from app.db.rule_store import seed_rules
 from app.db.session import get_engine
 from app.schemas.common import Code
 from app.schemas.layout import LayoutFile
@@ -53,6 +55,7 @@ class SeedReport:
     links: int
     users: int
     scenarios: int
+    rules: int
 
 
 def seed(
@@ -64,7 +67,8 @@ def seed(
 ) -> SeedReport:
     """Insert the community unless it exists; with reset, replace it. The caller commits.
 
-    Scenarios always follow their files, so a database seeded before a scenario existed gets it.
+    Scenarios always follow their files, so a database seeded before a scenario existed gets it;
+    a rule the community lacks starts at the engine's defaults, and edited rules stay (F4).
     """
     layout = LayoutFile.model_validate_json(layout_path.read_text(encoding="utf-8"))
     staff = UsersFile.model_validate_json(users_path.read_text(encoding="utf-8"))
@@ -79,6 +83,7 @@ def seed(
     if db.scalar(select(Community.id).where(Community.id == community_id)) is not None:
         if not reset:
             seed_scenarios(db, community_id, layout, scenario_dir)
+            seed_rules(db, community_id)
             return _report(db, community_id, created=False)
         db.execute(delete(Community).where(Community.id == community_id))  # cascades
         db.expunge_all()
@@ -153,6 +158,7 @@ def seed(
     )
     db.flush()
     seed_scenarios(db, community_id, layout, scenario_dir)
+    seed_rules(db, community_id)
     return _report(db, community_id, created=True)
 
 
@@ -180,7 +186,7 @@ def seed_scenarios(
 
 
 def _report(db: Session, community_id: uuid.UUID, created: bool) -> SeedReport:
-    def count(model: type[Zone | Node | Link | AppUser | Scenario]) -> int:
+    def count(model: type[Zone | Node | Link | AppUser | Scenario | RuleConfig]) -> int:
         query = select(func.count()).select_from(model).where(model.community_id == community_id)
         return db.scalar(query) or 0
 
@@ -192,6 +198,7 @@ def _report(db: Session, community_id: uuid.UUID, created: bool) -> SeedReport:
         count(Link),
         count(AppUser),
         count(Scenario),
+        count(RuleConfig),
     )
 
 
@@ -205,7 +212,8 @@ def main(argv: list[str] | None = None) -> None:
     state = "loaded" if report.created else "already present, left unchanged"
     print(
         f"Seed {state}: {report.zones} zones, {report.nodes} nodes, "
-        f"{report.links} links, {report.users} users, {report.scenarios} scenarios"
+        f"{report.links} links, {report.users} users, {report.scenarios} scenarios, "
+        f"{report.rules} rules"
     )
 
 

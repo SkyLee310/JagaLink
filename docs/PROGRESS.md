@@ -162,3 +162,62 @@ One entry per milestone or working session, newest last: what changed, the imple
 - D-56 says expiry clears `anomaly.track_id`: give that foreign key `ON DELETE SET NULL` in M4. `purge_expired` is a bulk `DELETE … RETURNING`, so ORM cascades never run; only database `ON DELETE` rules apply.
 - The golden path files cover the whole night (71 tracks each), while a live run plays only its window (S1 50 events, S2 15 with one track), so a live run produces far fewer tracks.
 - `preview_logs` on the API server can return tens of thousands of characters after a stack trace; restart the server rather than reading it all.
+
+## 2026-10-20 · M4 a path raises an alert on the guard screen (F4, F5, F6)
+
+**Status.** M4.1–M4.6 done (PR #8). M4.7 passes locally: 70 ms from posting the event to the card in the DOM, against a 2 s budget. The deployed run waits on M0.10: `E2E_BASE_URL=<Vercel URL> E2E_API_URL=<Cloud Run URL> PW_CHANNEL=msedge pnpm e2e` in `frontend/`.
+
+**What changed**
+- Backend:
+  - pure engine: `engine/rules.py` (after-hours, loiter, off-route, D-52–D-54), `engine/router.py` (nearest on-duty guard by walking time, supervisor escalation, next-camera score with its basis, D-57, D-58) and `engine/alerting.py` (one alert state per track and rule). `link_and_check` is the one step that the pipeline, the golden files and the M6 eval runner share (D-35);
+  - migration `0005`: `rule_config`, `anomaly`, `alert`, `alert_action`;
+  - rules are seeded from the engine defaults (`RuleSet()`). `GET /rules` is open to every user. `PUT /rules/{key}` is for supervisors only and merges params field by field; bad thresholds get 422 `invalid_rule`, which lists each problem. The pipeline reloads the rules and guard posts on every batch, so an edit applies from the next event;
+  - alerts: `alert_store.save` writes anomalies and alerts under deterministic IDs, after the tracks and before the purge. Routes: `GET /alerts` and `GET /alerts/{id}`, plus `POST /alerts/{id}/actions` to confirm or dismiss with a one-line reason of at most 200 characters (409 `alert_already_handled`). The stream carries `alert` and `alert_update`, and its backlog sends every alert as `alert_update`;
+  - golden alert files `golden/*.alerts.jsonl`. Tests check that:
+    - each target raises exactly its expected alerts;
+    - background movement stays within 2 false alerts per camera (D-68);
+    - the live window raises only the targets' alerts;
+  - settings `NEXT_CAMERA_WEIGHTS` (D-57) and `MULTI_RULE_SEVERITY` (D-60);
+  - the stream now starts with an `: open` comment line (see the traps).
+- Frontend:
+  - the guard console lists the run's alerts as cards beside the map, open and most severe first. Each card shows:
+    - severity (dashed while provisional, D-61), rule, node and local time;
+    - why the alert fired;
+    - the next camera with distance, walk and share of normal routes;
+    - who the alert went to and how far they have to walk;
+  - the map rings each open alert in its severity colour and draws a dashed arrow to a dashed ring on the next camera;
+  - the notification cue (F6):
+    - a two-note Web Audio chime (`lib/cue.ts`), once per burst of new open alerts;
+    - a 6 s glow on a new card;
+    - the open-alert count in the tab title;
+  - each open card has a reason box with Confirm and Dismiss. The answer updates the card at once, and every other screen updates through `alert_update`;
+  - `lib/runTime.ts` moved out of the player, and `components/StreamBadge.tsx` is now shared by the event feed and the alert panel;
+  - Playwright (`@playwright/test`, D-78): `playwright.config.ts` (1366 × 768) and `e2e/latency.spec.ts`, run with `pnpm e2e`.
+- Browser check (local API, Edge through Playwright):
+  - five open alerts fit with no scrolling at 1366 × 768, and also at 1366 × 641, which is a maximised browser on a 768-pixel screen;
+  - Guard C confirmed one alert with a reason, and the supervisor's tab showed "Confirmed by Guard C … — “reason”". Both tab titles went from (5) to (4).
+
+**Implementation decisions**
+- An alert is one per (track, rule) for the track's lifetime (D-59). A repeat match adds evidence and raises `version`, even after someone has handled the alert; a handled alert never reopens.
+- Severity is each rule's own `severity` param. Once two or more rules match a track, all its alerts take `MULTI_RULE_SEVERITY` (D-60). Severity stays provisional (`triage_status` `pending`) until M5's triage.
+- With no guard on duty who can reach the node, the alert is `escalated` to the first on-duty supervisor, or the first supervisor if none is on duty.
+- An action is stamped with the run's simulated clock (D-31), and never earlier than the alert, so the M5 timeline can place it.
+- `version` rises with every change, and rows are locked while they change. Clients keep the highest version they have seen, so replays and the race between an action's answer and its `alert_update` both settle the same way.
+- Both roles see every alert of the run, marked "(you)" where it went to the viewer, and every new open alert chimes. Filtering per guard can come later.
+- The chime waits 150 ms so that a burst, or the replay on connect, makes one sound. Alerts that have chimed once stay quiet after a reconnect, and a reconnect keeps each card's first-seen time.
+
+**⚠️ Traps**
+- After pulling M4, run `make seed`. It applies migration 0005 and adds the three rule rows.
+- `RunManager` now takes `pipelines=`, carrying the next-camera weights and the multi-rule severity; `main.py` builds it from settings.
+- A late subscriber to a live channel gets the hub log's original `alert` messages after the backlog's newer `alert_update`, so the client must keep the highest version.
+- `anomaly.track_id` is set only when the anomaly is created. Expiry nulls it (`ON DELETE SET NULL`), and the alert keeps its evidence.
+- After an intended engine change, rewrite the golden files with `uv run python -m app.sim.golden`.
+- Use the Edit tool for strings that contain backslashes. A Git Bash heredoc into Python turned `\n` into real newlines.
+- Browsers launched by Playwright (Edge and Chrome here) did not resolve `fetch` on a streaming response until its first body byte, while the in-app browser and Python did. A console on a run with nothing to replay therefore sat at "Connecting…" until the 15 s ping. The stream's `: open` line fixes this, and proxies that wait for a body are helped too, so keep it first.
+- Local e2e: `PW_CHANNEL=msedge pnpm e2e` (or `chrome`) uses the installed browser; `pnpm exec playwright install` is needed only where no browser is installed. The latency check replaces the community's current run (D-77), so never run it against the deployed app during a demo.
+- These files were edited outside the M4 files row:
+  - `backend/.env.example`, for the two new settings;
+  - `frontend/playwright.config.ts`;
+  - `frontend/vite.config.ts`, so Vitest reads only `src/**/*.test.*`;
+  - `frontend/tsconfig.node.json`, which now type-checks `e2e/` with the DOM lib;
+  - `frontend/pnpm-lock.yaml`.

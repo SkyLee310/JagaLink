@@ -18,6 +18,10 @@ TABLES = {
     "event",
     "track",
     "track_segment",
+    "rule_config",
+    "anomaly",
+    "alert",
+    "alert_action",
 }
 
 

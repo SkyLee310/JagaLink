@@ -1490,7 +1490,7 @@
           "events"
         ],
         "summary": "Post Events",
-        "description": "Store a batch of one run's events in the one contract (D-16, D-30), link them into\ntracks (F3) and push both.\n\n422 for a malformed event, an unknown field, a node outside the community, mixed runs, or\nan event earlier than the run's latest; 409 once the run has finished or been replaced.",
+        "description": "Store a batch of one run's events in the one contract (D-16, D-30), link them into\ntracks (F3), check the rules on each track (F4) and push it all on the run's stream.\n\n422 for a malformed event, an unknown field, a node outside the community, mixed runs, or\nan event earlier than the run's latest; 409 once the run has finished or been replaced.",
         "operationId": "post_events_api_v1_events_post",
         "security": [
           {
@@ -1878,6 +1878,428 @@
         }
       }
     },
+    "/api/v1/rules": {
+      "get": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Get Rules",
+        "description": "The community's three anomaly rules (F4), each with its thresholds and the rule-based\nseverity of its alerts (D-60).",
+        "operationId": "get_rules_api_v1_rules_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/AfterHoursRule"
+                      },
+                      {
+                        "$ref": "#/components/schemas/LoiterRule"
+                      },
+                      {
+                        "$ref": "#/components/schemas/OffRouteRule"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "key",
+                      "mapping": {
+                        "after_hours": "#/components/schemas/AfterHoursRule",
+                        "loiter": "#/components/schemas/LoiterRule",
+                        "off_route": "#/components/schemas/OffRouteRule"
+                      }
+                    }
+                  },
+                  "type": "array",
+                  "title": "Response Get Rules Api V1 Rules Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rules/{key}": {
+      "put": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Put Rule",
+        "description": "Change a rule's thresholds, or switch it on or off; the next batch of events runs on them\nwith no code change (F4). Fields left out stay as they are. 422 when the thresholds are not\nvalid, with each problem in `details`.",
+        "operationId": "put_rule_api_v1_rules__key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "after_hours",
+                "loiter",
+                "off_route"
+              ],
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AfterHoursRule"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LoiterRule"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OffRouteRule"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "key",
+                    "mapping": {
+                      "after_hours": "#/components/schemas/AfterHoursRule",
+                      "loiter": "#/components/schemas/LoiterRule",
+                      "off_route": "#/components/schemas/OffRouteRule"
+                    }
+                  },
+                  "title": "Response Put Rule Api V1 Rules  Key  Put"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Get Alerts",
+        "description": "Alerts (F4\u2013F6) in the order they were raised, each with its rule, severity, guard, next\ncamera and evidence.",
+        "operationId": "get_alerts_api_v1_alerts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "new",
+                    "acked",
+                    "dismissed",
+                    "escalated"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "title": "Response Get Alerts Api V1 Alerts Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alert_id}": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Get Alert",
+        "operationId": "get_alert_api_v1_alerts__alert_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alert_id}/actions": {
+      "post": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Act On Alert",
+        "description": "Confirm or dismiss an alert with an optional one-line reason (F6). The action is stamped\nwith the run's clock, so the incident timeline can place it (D-62), and every open screen\ngets the change as `alert_update`. 409 when the alert has been handled already.",
+        "operationId": "act_on_alert_api_v1_alerts__alert_id__actions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertActionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/v1/stream": {
       "get": {
         "tags": [
@@ -1946,6 +2368,344 @@
   },
   "components": {
     "schemas": {
+      "AfterHoursParams": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "time",
+            "title": "End"
+          },
+          "zone_kinds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "street",
+                "gate",
+                "lane"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Zone Kinds"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "zone_kinds",
+          "severity"
+        ],
+        "title": "AfterHoursParams",
+        "description": "An appearance in a zone of one of `zone_kinds` from `start` to `end` in the community's\ntime zone; the period may span midnight (D-54)."
+      },
+      "AfterHoursRule": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "const": "after_hours",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "params": {
+            "$ref": "#/components/schemas/AfterHoursParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "enabled",
+          "params"
+        ],
+        "title": "AfterHoursRule"
+      },
+      "AlertActionIn": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "confirm",
+              "dismiss"
+            ],
+            "title": "Action"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "AlertActionIn",
+        "description": "Confirm or dismiss, with an optional one-line reason (F6)."
+      },
+      "AlertActionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "confirm",
+              "dismiss"
+            ],
+            "title": "Action"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "reason",
+          "ts",
+          "user"
+        ],
+        "title": "AlertActionOut"
+      },
+      "AlertOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "acked",
+              "dismissed",
+              "escalated"
+            ],
+            "title": "Status"
+          },
+          "rule": {
+            "type": "string",
+            "enum": [
+              "after_hours",
+              "loiter",
+              "off_route"
+            ],
+            "title": "Rule"
+          },
+          "rule_name": {
+            "type": "string",
+            "title": "Rule Name"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "track_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Id"
+          },
+          "track_anon_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Anon Id"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Node Id"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity"
+          },
+          "severity_reason": {
+            "type": "string",
+            "title": "Severity Reason"
+          },
+          "triage_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "agent",
+              "fallback"
+            ],
+            "title": "Triage Status"
+          },
+          "assigned_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "walk_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Walk S"
+          },
+          "next_node": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextNodeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_event_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Evidence Event Ids"
+          },
+          "created_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created Ts"
+          },
+          "updated_ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated Ts"
+          },
+          "acked_ts": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acked Ts"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/AlertActionOut"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "version",
+          "status",
+          "rule",
+          "rule_name",
+          "detail",
+          "score",
+          "track_id",
+          "track_anon_id",
+          "node_id",
+          "severity",
+          "severity_reason",
+          "triage_status",
+          "assigned_user",
+          "walk_s",
+          "next_node",
+          "evidence_event_ids",
+          "created_ts",
+          "updated_ts",
+          "acked_ts",
+          "actions"
+        ],
+        "title": "AlertOut",
+        "description": "One alert: a rule matching one anonymous path (D-18), the guard it went to and the\ncamera to check next (F5). Keep the copy with the highest `version`: the stream may deliver\nan older one after a newer one."
+      },
       "CommunityOut": {
         "properties": {
           "id": {
@@ -2733,6 +3493,130 @@
         "title": "LinkPatch",
         "description": "Only the fields sent change. The ends of a link are fixed: delete it and add another."
       },
+      "LoiterParams": {
+        "properties": {
+          "threshold_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Threshold S"
+          },
+          "window_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Window S"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "threshold_s",
+          "window_s",
+          "severity"
+        ],
+        "title": "LoiterParams",
+        "description": "At least `threshold_s` in one zone within the last `window_s` (D-52)."
+      },
+      "LoiterRule": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "const": "loiter",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "params": {
+            "$ref": "#/components/schemas/LoiterParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "enabled",
+          "params"
+        ],
+        "title": "LoiterRule"
+      },
+      "NextNodeBasis": {
+        "properties": {
+          "walk_s": {
+            "type": "number",
+            "title": "Walk S"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "transition_share": {
+            "type": "number",
+            "title": "Transition Share"
+          },
+          "direction": {
+            "type": "number",
+            "title": "Direction"
+          },
+          "backtrack": {
+            "type": "boolean",
+            "title": "Backtrack"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "walk_s",
+          "distance_m",
+          "transition_share",
+          "direction",
+          "backtrack",
+          "score"
+        ],
+        "title": "NextNodeBasis",
+        "description": "Why this camera comes next (D-20, D-57): the walk and distance from the alert's node, the\nshare of normal routes that take this step, and how well it keeps the direction of travel."
+      },
+      "NextNodeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/NextNodeBasis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "basis"
+        ],
+        "title": "NextNodeOut"
+      },
       "NodeCreate": {
         "properties": {
           "id": {
@@ -3097,6 +3981,85 @@
         ],
         "title": "NormalRoute",
         "description": "A route residents normally take, as node codes in walking order (D-53)."
+      },
+      "OffRouteParams": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "severity"
+        ],
+        "title": "OffRouteParams",
+        "description": "A step between two nodes that no normal route takes (D-53)."
+      },
+      "OffRouteRule": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "const": "off_route",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "params": {
+            "$ref": "#/components/schemas/OffRouteParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "enabled",
+          "params"
+        ],
+        "title": "OffRouteRule"
+      },
+      "RuleUpdate": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RuleUpdate",
+        "description": "What to change; leave out what stays. Each field in `params` replaces the stored one."
       },
       "RunCreate": {
         "properties": {
@@ -3495,6 +4458,39 @@
         ],
         "title": "TrackOut",
         "description": "One anonymous cross-camera path (F3), its segments in order. `status` is `expired` only\nin the stream message that removes it: an expired track is deleted (D-11, D-56)."
+      },
+      "UserRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "guard",
+              "supervisor"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "role"
+        ],
+        "title": "UserRef"
       },
       "ValidationError": {
         "properties": {
