@@ -10,6 +10,7 @@ Add a row before you start editing; remove it when you finish.
 
 | Owner | Task | Files | Since |
 |---|---|---|---|
+| @agent-a | M2 | `backend/app/{engine,sim,core,db,routers,schemas}/`, `backend/alembic/versions/`, `backend/data/scenarios/`, `frontend/src/{api,features/player}/` | 2026-10-20 |
 
 ## Phase 1 — proposal submission, 23 Oct
 
@@ -53,12 +54,12 @@ Needs: D-52, D-53, D-54, D-70, D-71, D-77.
 
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
-| M2.1 | Scenario JSON format and loader; S1 and S2 scripts (D-15) with background traffic (D-71), local times (D-54) and in-file ground truth (D-70). | Both files load and validate; loader tests pass. | | ⬜ |
-| M2.2 | Simulated clock and player: a pure core turns a scenario into an ordered event list; an async player emits it at the chosen speed, with pause and resume. | Two runs give an identical event sequence (golden event file). | | ⬜ |
-| M2.3 | Migration for `scenario`, `scenario_run`, `event`; `POST /events` batch ingest validated against the contract; `GET /events` filters. | A valid batch is stored; a malformed or extra-field event gets 422. | | ⬜ |
-| M2.4 | Run control: `POST /scenario-runs`, `/pause`, `/resume`, `/reset` (clears that run's derived rows); one live run per community (D-77). | API tests cover each state change. | | ⬜ |
-| M2.5 | SSE: `GET /stream?run_id=` sends `event` messages; a fetch-based client hook in the frontend with the bearer token and reconnect. | Events arrive in the browser during a run. | | ⬜ |
-| M2.6 | Player UI: pick a scenario, play, pause, reset, speed; live event feed; cameras flash on the map. | S1 and S2 play, pause and reset with one click each. | | ⬜ |
+| M2.1 | Scenario JSON format and loader; S1 and S2 scripts (D-15) with background traffic (D-71), local times (D-54) and in-file ground truth (D-70). | Both files load and validate; loader tests pass. | @agent-a | 🔄 |
+| M2.2 | Simulated clock and player: a pure core turns a scenario into an ordered event list; an async player emits it at the chosen speed, with pause and resume. | Two runs give an identical event sequence (golden event file). | @agent-a | 🔄 |
+| M2.3 | Migration for `scenario`, `scenario_run`, `event`; `POST /events` batch ingest validated against the contract; `GET /events` filters. | A valid batch is stored; a malformed or extra-field event gets 422. | @agent-a | 🔄 |
+| M2.4 | Run control: `POST /scenario-runs`, `/pause`, `/resume`, `/reset` (clears that run's derived rows); one live run per community (D-77). | API tests cover each state change. | @agent-a | 🔄 |
+| M2.5 | SSE: `GET /stream?run_id=` sends `event` messages; a fetch-based client hook in the frontend with the bearer token and reconnect. | Events arrive in the browser during a run. | @agent-a | 🔄 |
+| M2.6 | Player UI: pick a scenario, play, pause, reset, speed; live event feed; cameras flash on the map. | S1 and S2 play, pause and reset with one click each. | @agent-a | 🔄 |
 
 ### M3 · Events become a path (F3) — target Tue 20 Oct
 
