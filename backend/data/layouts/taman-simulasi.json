@@ -513,5 +513,287 @@
       "bidirectional": true,
       "distance_m": 35.0
     }
+  ],
+  "normal_routes": [
+    {
+      "name": "Gate to lane 1 north",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-lane-1n"
+      ]
+    },
+    {
+      "name": "Lane 1 north to gate",
+      "nodes": [
+        "c-lane-1n",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 1 north to the park",
+      "nodes": [
+        "c-lane-1n",
+        "c-main-01",
+        "c-main-02",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 1 north",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-main-02",
+        "c-main-01",
+        "c-lane-1n"
+      ]
+    },
+    {
+      "name": "Gate to lane 2 north",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-main-02",
+        "c-lane-2n"
+      ]
+    },
+    {
+      "name": "Lane 2 north to gate",
+      "nodes": [
+        "c-lane-2n",
+        "c-main-02",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 2 north to the park",
+      "nodes": [
+        "c-lane-2n",
+        "c-main-02",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 2 north",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-main-02",
+        "c-lane-2n"
+      ]
+    },
+    {
+      "name": "Gate to lane 3 north",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-main-02",
+        "c-main-03",
+        "c-lane-3n"
+      ]
+    },
+    {
+      "name": "Lane 3 north to gate",
+      "nodes": [
+        "c-lane-3n",
+        "c-main-03",
+        "c-main-02",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 3 north to the park",
+      "nodes": [
+        "c-lane-3n",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 3 north",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-lane-3n"
+      ]
+    },
+    {
+      "name": "Gate to lane 1 south",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-lane-1s"
+      ]
+    },
+    {
+      "name": "Lane 1 south to gate",
+      "nodes": [
+        "c-lane-1s",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 1 south to the park",
+      "nodes": [
+        "c-lane-1s",
+        "c-main-01",
+        "c-main-02",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 1 south",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-main-02",
+        "c-main-01",
+        "c-lane-1s"
+      ]
+    },
+    {
+      "name": "Gate to lane 2 south",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-main-02",
+        "c-lane-2s"
+      ]
+    },
+    {
+      "name": "Lane 2 south to gate",
+      "nodes": [
+        "c-lane-2s",
+        "c-main-02",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 2 south to the park",
+      "nodes": [
+        "c-lane-2s",
+        "c-main-02",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 2 south",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-main-02",
+        "c-lane-2s"
+      ]
+    },
+    {
+      "name": "Gate to lane 3 south",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-main-02",
+        "c-main-03",
+        "c-lane-3s"
+      ]
+    },
+    {
+      "name": "Lane 3 south to gate",
+      "nodes": [
+        "c-lane-3s",
+        "c-main-03",
+        "c-main-02",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Lane 3 south to the park",
+      "nodes": [
+        "c-lane-3s",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to lane 3 south",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-lane-3s"
+      ]
+    },
+    {
+      "name": "Gate to the park",
+      "nodes": [
+        "c-gate-01",
+        "c-main-01",
+        "c-main-02",
+        "c-main-03",
+        "c-main-04",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "Park to gate",
+      "nodes": [
+        "c-park-01",
+        "c-main-04",
+        "c-main-03",
+        "c-main-02",
+        "c-main-01",
+        "c-gate-02"
+      ]
+    },
+    {
+      "name": "Park to the clubhouse",
+      "nodes": [
+        "c-park-01",
+        "s-club-01"
+      ]
+    },
+    {
+      "name": "Clubhouse to the park",
+      "nodes": [
+        "s-club-01",
+        "c-park-01"
+      ]
+    },
+    {
+      "name": "South cross lane, eastbound",
+      "nodes": [
+        "c-lane-1s",
+        "c-lane-2s",
+        "c-lane-3s"
+      ]
+    },
+    {
+      "name": "South cross lane, westbound",
+      "nodes": [
+        "c-lane-3s",
+        "c-lane-2s",
+        "c-lane-1s"
+      ]
+    }
   ]
 }

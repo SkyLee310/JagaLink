@@ -35,11 +35,16 @@ class Community(Base):
     __tablename__ = "community"
 
     id: Mapped[uuid.UUID] = uuid_pk()
+    code: Mapped[str] = mapped_column(Text, unique=True)
     name: Mapped[str] = mapped_column(Text)
     map_image_url: Mapped[str | None] = mapped_column(Text)
     scale_m_per_px: Mapped[float] = mapped_column(Double)
     timezone: Mapped[str] = mapped_column(
         Text, default="Asia/Kuala_Lumpur", server_default="Asia/Kuala_Lumpur"
+    )
+    # Named node-code sequences: the off-route rule and next-camera scoring read them (D-53).
+    normal_routes: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default=sql("'[]'::jsonb")
     )
 
 
@@ -85,6 +90,7 @@ class Link(Base):
         UniqueConstraint("from_node_id", "to_node_id"),
         CheckConstraint("from_node_id <> to_node_id", name="not_self"),
         CheckConstraint("travel_min_s > 0 AND travel_min_s <= travel_max_s", name="travel_window"),
+        CheckConstraint("distance_m IS NULL OR distance_m > 0", name="distance_m"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -94,6 +100,8 @@ class Link(Base):
     travel_min_s: Mapped[int] = mapped_column(Integer)
     travel_max_s: Mapped[int] = mapped_column(Integer)
     bidirectional: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sql("true"))
+    # Walking distance along the streets, part of the next-camera basis (D-20).
+    distance_m: Mapped[float | None] = mapped_column(Double)
 
 
 class AppUser(Base):

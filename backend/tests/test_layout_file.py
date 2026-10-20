@@ -93,3 +93,18 @@ def test_opposite_one_way_links_are_allowed() -> None:
     _add_link("c-main-01", "c-gate-01")(data)  # c-gate-01 -> c-main-01 is one-way
     data["links"][-1]["bidirectional"] = False
     LayoutFile.model_validate(data)
+
+
+def test_normal_routes_walk_along_links() -> None:
+    """D-53: each step of a normal route follows a link, in a direction the link allows."""
+    allowed = {(link.from_node, link.to_node) for link in LAYOUT.links}
+    allowed |= {(link.to_node, link.from_node) for link in LAYOUT.links if link.bidirectional}
+    assert LAYOUT.normal_routes
+    for route in LAYOUT.normal_routes:
+        assert set(zip(route.nodes, route.nodes[1:], strict=False)) <= allowed, route.name
+
+
+def test_back_lane_and_fences_are_never_normal() -> None:
+    """Residents keep off the back lane and the fences at night, so a move there is off-route."""
+    on_routes = {code for route in LAYOUT.normal_routes for code in route.nodes}
+    assert not {code for code in on_routes if code.startswith(("c-back-", "s-fence-"))}

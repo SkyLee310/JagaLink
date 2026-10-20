@@ -1,7 +1,7 @@
 """Shared fixtures: a migrated test database, and one rolled-back transaction per test."""
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -12,7 +12,7 @@ from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
-from app.db.seed import SeedReport, seed
+from app.db.seed import SeedReport, seed, seed_id
 from app.db.session import get_db
 from app.main import create_app
 
@@ -83,3 +83,15 @@ def client(db: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def headers_for(client: TestClient, seeded: SeedReport) -> Callable[[str], dict[str, str]]:
+    """Authorization headers for a seeded user, picked by code (e.g. u-sup-01)."""
+
+    def make(code: str) -> dict[str, str]:
+        user_id = seed_id("taman-simulasi", "user", code)
+        token = client.post("/api/v1/session", json={"user_id": str(user_id)}).json()["token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    return make

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 STATUS_CODES = {
@@ -54,6 +55,12 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def on_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         return error_response(422, "validation_error", "The request is malformed", exc.errors())
+
+    @app.exception_handler(IntegrityError)
+    async def on_integrity_error(_: Request, exc: IntegrityError) -> JSONResponse:
+        # The routes check their input first; this catches a race with another save.
+        message = "The change conflicts with data saved meanwhile; reload and try again"
+        return error_response(409, "conflict", message)
 
     @app.exception_handler(Exception)
     async def on_unexpected_error(_: Request, exc: Exception) -> JSONResponse:

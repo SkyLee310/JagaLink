@@ -82,10 +82,12 @@ def seed(
     db.add(
         Community(
             id=community_id,
+            code=slug,
             name=community.name,
             map_image_url=community.map_image_url,
             scale_m_per_px=community.scale_m_per_px,
             timezone=community.timezone,
+            normal_routes=[route.model_dump() for route in layout.normal_routes],
         )
     )
     db.flush()
@@ -126,6 +128,7 @@ def seed(
             travel_min_s=link.travel_min_s,
             travel_max_s=link.travel_max_s,
             bidirectional=link.bidirectional,
+            distance_m=link.distance_m,
         )
         for link in layout.links
     )
