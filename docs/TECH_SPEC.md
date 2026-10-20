@@ -50,14 +50,15 @@ flowchart LR
     ING["Ingest and store<br/>POST /events"] --> LNK["Path linker<br/>F3, joins tracks"]
     LNK --> RUL["Rule engine<br/>F4, anomalies"]
     RUL --> RTR["Router<br/>F5, guard + camera"]
-    RTR --> AGT["Agent<br/>F7, Vertex AI"]
-    AGT --> SSE["SSE stream<br/>push within 2 s"]
+    RTR --> SSE["SSE stream<br/>push within 2 s"]
+    RTR -.-> AGT["Agent<br/>F7, Vertex AI"]
+    AGT -. "alert_update" .-> SSE
     SSE --> CON["Guard console<br/>F6, one-click act"]
 ```
 
 PostgreSQL holds events, tracks, alerts and timelines. The agent reads it only through tools.
 
-*Pipeline architecture · 3 sources, 1 event format, 1 alert path.* The simulator, video detector and eval runner all post the same events. The alert then passes the agent before it reaches the guard console.
+*Pipeline architecture · 3 sources, 1 event format, 1 alert path.* The simulator, video detector and eval runner all post the same events. The alert reaches the guard console as soon as the router finishes, with a provisional rule-based severity; the agent's severity and reason follow as an `alert_update` (D-61).
 
 ### Design decisions
 
@@ -84,10 +85,10 @@ PostgreSQL holds events, tracks, alerts and timelines. The agent reads it only t
 
 ### Key algorithms
 
-- **Path linking.** When an object leaves camera A, open a candidate window on each linked camera B from `exit_ts + travel_min_s` to `exit_ts + travel_max_s`. An appearance at B inside the window is joined to the track, choosing the best time fit when several objects compete. No match, or an appearance at an unlinked camera, starts a new track. Only object class and timing are used, never face features.
-- **Anomaly rules (human-defined).** After-hours entry: a track appears in a zone during a configured quiet period. Loitering: dwell in one zone above a threshold. Off-route: a transition between nodes that has no link, or one the baseline marks as rare. All thresholds live in `rule_config`.
-- **Alert routing.** Dijkstra over link walking times from each on-duty guard's node to the event node; the shortest wins. If no guard is on duty, the alert is escalated to the supervisor.
-- **Next-camera suggestion.** Score each neighbour of the track's current node by walking-time fit and by how often that transition appears in the scenario's known routes or the learned baseline. Return the top camera with the factors that produced it.
+- **Path linking.** When an object leaves camera A, open a candidate window on each linked camera B from `exit_ts + travel_min_s × class factor` to `exit_ts + travel_max_s`; the factor is 1.0 for a person and 0.3 for a vehicle, because link times are walking times (D-55). An appearance at B inside the window is joined to the track, choosing the best time fit when several objects compete. No match, or an appearance at an unlinked camera, starts a new track. A track closes when no linked appearance arrives within its last node's largest outgoing `travel_max_s`, and expires 24 h after its last sighting (D-56). Only object class and timing are used, never face features.
+- **Anomaly rules (human-defined).** Rules run in the community's time zone (D-54). After-hours entry: a track appears in a lane zone during the quiet period, 23:00–06:00. Loitering: a track's cumulative time in one zone within a rolling window reaches a threshold (180 s within 10 min); the time counts each sighting in the zone and each gap between consecutive sightings that are both in it (D-52). Off-route: a transition that no seeded normal route contains (D-53); in Phase 2, also one the learned baseline marks as rare. All thresholds live in `rule_config`.
+- **Alert routing.** Dijkstra over link weights, (`travel_min_s` + `travel_max_s`) / 2, from each on-duty guard's node to the event node; guard positions come from the scenario's roster (D-58). The shortest wins. If no guard is on duty, the alert is escalated to the supervisor. A track has at most one open alert per rule; a repeat match adds evidence to it (D-59). Severity starts from a rule-based mapping (D-60).
+- **Next-camera suggestion.** Score each neighbour of the track's current node by direction of travel, no immediate backtrack, walking time and the transition's share of normal routes, with weights in config (D-57); in Phase 2, also the learned baseline. Return the top camera with the factors that produced it. The score never reads the scenario's true path.
 - **Evaluation baseline.** Model guards checking N screens in turn with a fixed dwell time per screen. Time to alert is the wait until the guard's current screen shows the camera where the event occurs. Parameters sit in config (PRD Q1).
 
 ## 4. Data Model
@@ -96,22 +97,22 @@ PostgreSQL holds events, tracks, alerts and timelines. The agent reads it only t
 
 | Entity | Key fields | Notes |
 |---|---|---|
-| community | name, map_image_url, scale_m_per_px, timezone | One seeded community for the prototype |
+| community | name, map_image_url, scale_m_per_px, timezone, normal_routes (jsonb) | One seeded community for the prototype; `normal_routes` holds named node-code sequences for the off-route rule and next-camera scoring (D-53) |
 | zone | community_id, code, name, kind (street, gate, lane), polygon | Used by loitering and after-hours rules; `code` is unique per community (D-75) |
 | node | community_id, code, kind (camera, sensor), name, x, y, heading_deg, status (online, offline), zone_id | Offline status drives F9; `code` is unique per community (D-75) |
 | link | community_id, from_node_id, to_node_id, travel_min_s, travel_max_s, bidirectional | Unique on (from, to); check from is not to (F1 rejects self and duplicate links) |
-| app_user | community_id, code, name, role (guard, supervisor), on_duty, current_node_id | Seeded; the role picker uses this table; `code` is unique per community (D-75) |
-| scenario | community_id, name, description, script_path, duration_s, truth_path (jsonb) | `truth_path` is the scripted true route used by F8 |
+| app_user | community_id, code, name, role (guard, supervisor), on_duty, current_node_id | Seeded; the role picker uses this table; `code` is unique per community (D-75); a run sets `on_duty` and `current_node_id` from its scenario's roster (D-58) |
+| scenario | community_id, code, name, description, script_path, duration_s | Ground truth — true path, expected alerts and timeline — stays in the script file, never in the database (D-70) |
 | scenario_run | scenario_id, mode (live, eval), speed, state, started_at | One row per playback or evaluation |
 | event | community_id, run_id, ts, node_id, type (appear, disappear, dwell), object_class (person, vehicle), local_track_id, attrs (jsonb), source (sim, video) | The single contract between sources and the pipeline; `attrs` holds no personal data |
 | track | community_id, run_id, anon_id, first_ts, last_ts, expires_at, status (active, closed, expired) | A track is one anonymous cross-camera path |
 | track_segment | track_id, node_id, enter_ts, exit_ts, event_ids (uuid[]) | Ordered segments make up the path |
 | rule_config | community_id, rule_key (after_hours, loiter, off_route), params (jsonb), enabled | Editable without code changes (F4) |
 | baseline_profile | node_id, hour_bucket, mean_count, std_count, transitions (jsonb) | Learned normal movement (F13) |
-| anomaly | track_id, rule_key, ts, evidence_event_ids (uuid[]), score | Rule name and evidence are mandatory |
-| alert | anomaly_id, status (new, acked, dismissed, escalated), severity (high, medium, low), severity_reason, assigned_user_id, next_node_id, next_node_basis (jsonb), created_ts, acked_ts | Severity and reason come from the agent |
+| anomaly | track_id, rule_key, ts, evidence_event_ids (uuid[]), score | Rule name and evidence are mandatory; `track_id` is cleared when the track expires (D-56) |
+| alert | anomaly_id, status (new, acked, dismissed, escalated), severity (high, medium, low), severity_reason, triage_status (pending, agent, fallback), assigned_user_id, next_node_id, next_node_basis (jsonb), created_ts, acked_ts | Severity starts rule-based and provisional (`pending`); the agent's severity and reason replace it, or the rule-based value stays after the timeout (`fallback`) (D-60, D-61) |
 | alert_action | alert_id, user_id, action (confirm, dismiss), reason, ts | Written to the incident timeline as well |
-| timeline_entry | alert_id, ts, kind (fact, unknown), text, event_ids (uuid[]) | `fact` entries must cite at least one existing event |
+| timeline_entry | alert_id, ts, kind (fact, unknown, action), text, event_ids (uuid[]) | `fact` entries must cite at least one existing event; `action` entries record the guard's confirm or dismiss (D-62) |
 | eval_result | run_id, metric, value, baseline_value | Metrics: time_to_alert, next_cam_accuracy, false_alerts_per_cam_night, timeline_match |
 
 F12 adds `audit_log` (user_id, action, target_type, target_id, ts) and `retention_policy` (community_id, track_ttl_s, event_ttl_s).

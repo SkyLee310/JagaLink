@@ -21,16 +21,16 @@ Needs: D-66, D-69, D-75, D-76, D-78, D-81.
 
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
-| M0.1 | Dev setup: install GNU make and pnpm on this machine (with the user's OK); `git init`, `.gitignore`; create the GitHub repo (D-81) and push. | `make --version` and `pnpm --version` work; `main` is on GitHub. | | ⬜ |
-| M0.2 | Backend scaffold: uv project on Python 3.12; FastAPI under `/api/v1` with a health route; settings from env; CORS for `FRONTEND_ORIGIN`; `{code, message, details}` errors; `.env.example`. | `GET /api/v1/health` returns 200; `ruff check` and `pytest` pass. | | ⬜ |
-| M0.3 | Database: `docker-compose.yml` with Postgres 16; models and the first Alembic migration for `community`, `zone`, `node`, `link`, `app_user` (with codes, D-75). | `alembic upgrade head` builds an empty DB; `downgrade base` reverses it. | | ⬜ |
-| M0.4 | Seed: community layout JSON in `backend/data/layouts/` (~20 nodes, zones, links with walking times, D-69), a background map image, 3 guards and 1 supervisor; `make seed` loads it. | Running `make seed` twice leaves the same rows; a test validates the layout file. | | ⬜ |
-| M0.5 | API: `GET /session/users` for the role picker, `POST /session` (D-76; returns the token and the community ID) and `GET /communities/{id}/layout`; the layout route rejects a missing token with 401. | API tests cover all three routes and the 401. | | ⬜ |
-| M0.6 | Frontend scaffold: Vite + React 19 + TypeScript + Tailwind + TanStack Query + Zustand + router; API client (`VITE_API_URL`, bearer token); `make types` from `openapi.json`. | `pnpm build` passes with the generated types. | | ⬜ |
-| M0.7 | Role picker and read-only map: choose a seeded user, then see nodes, links and zones in react-konva over the background. | Locally, both roles reach the 20-node map. | | ⬜ |
-| M0.8 | Makefile: `dev`, `seed`, `test`, `lint`, `build`, `types` (`eval` and `demo` as stubs). | Every target runs in Git Bash on Windows and in CI. | | ⬜ |
-| M0.9 | CI: `backend.yml` (ruff, pytest with a Postgres service, stale `openapi.json` check) and `frontend.yml` (oxlint, tsc, Vitest, build, stale types check); both skip their tests when their folder is unchanged (D-48); branch protection on `main` requires both. | Both workflows are green on `main`, and a docs-only PR can merge. | | ⬜ |
-| M0.10 | Deploy (D-47): backend to Cloud Run with PostgreSQL 16 on Neon (migrate and seed on start); frontend to Vercel with `VITE_API_URL`; CORS locked to the Vercel origin. | The deployed URL shows the seeded map on a laptop and a phone. | | ⬜ |
+| M0.1 | Dev setup: install GNU make and pnpm on this machine (with the user's OK); `git init`, `.gitignore`; create the GitHub repo (D-81) and push. | `make --version` and `pnpm --version` work; `main` is on GitHub. | @agent-a | ✅ 2026-10-17 |
+| M0.2 | Backend scaffold: uv project on Python 3.12; FastAPI under `/api/v1` with a health route; settings from env; CORS for `FRONTEND_ORIGIN`; `{code, message, details}` errors; `.env.example`. | `GET /api/v1/health` returns 200; `ruff check` and `pytest` pass. | @agent-a | ✅ 2026-10-17 |
+| M0.3 | Database: `docker-compose.yml` with Postgres 16; models and the first Alembic migration for `community`, `zone`, `node`, `link`, `app_user` (with codes, D-75). | `alembic upgrade head` builds an empty DB; `downgrade base` reverses it. | @agent-a | ✅ 2026-10-17 |
+| M0.4 | Seed: community layout JSON in `backend/data/layouts/` (~20 nodes, zones, links with walking times, D-69), a background map image, 3 guards and 1 supervisor; `make seed` loads it. | Running `make seed` twice leaves the same rows; a test validates the layout file. | @agent-a | ✅ 2026-10-17 |
+| M0.5 | API: `GET /session/users` for the role picker, `POST /session` (D-76; returns the token and the community ID) and `GET /communities/{id}/layout`; the layout route rejects a missing token with 401. | API tests cover all three routes and the 401. | @agent-a | ✅ 2026-10-17 |
+| M0.6 | Frontend scaffold: Vite + React 19 + TypeScript + Tailwind + TanStack Query + Zustand + router; API client (`VITE_API_URL`, bearer token); `make types` from `openapi.json`. | `pnpm build` passes with the generated types. | @agent-a | ✅ 2026-10-17 |
+| M0.7 | Role picker and read-only map: choose a seeded user, then see nodes, links and zones in react-konva over the background. | Locally, both roles reach the 20-node map. | @agent-a | ✅ 2026-10-17 |
+| M0.8 | Makefile: `dev`, `seed`, `test`, `lint`, `build`, `types` (`eval` and `demo` as stubs). | Every target runs in Git Bash on Windows and in CI. | @agent-a | ✅ 2026-10-17 |
+| M0.9 | CI: `backend.yml` (ruff, pytest with a Postgres service, stale `openapi.json` check) and `frontend.yml` (oxlint, tsc, Vitest, build, stale types check); both skip their tests when their folder is unchanged (D-48); branch protection on `main` requires both. | Both workflows are green on `main`, and a docs-only PR can merge. | @agent-a | ✅ 2026-10-19 |
+| M0.10 | Deploy (D-47): backend to Cloud Run with PostgreSQL 16 on Neon (migrate and seed on start); frontend to Vercel with `VITE_API_URL`; CORS locked to the Vercel origin. | The deployed URL shows the seeded map on a laptop and a phone. | @agent-a | ⛔ waits on H2 |
 
 ### M1 · Draw and keep a layout (F1) — target Sun 18 Oct
 
@@ -123,8 +123,8 @@ Needs: D-68, D-72, D-73.
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
 | H1 | (human) Register the team. | Registered before registration closes on 21 Oct. | | ⬜ |
-| H2 | (human) Neon, Vercel and GitHub accounts ready for M0.10; Google Cloud billing comes with H3. | A Neon project exists, and Cloud Build and Vercel can deploy from this repo. | | ⬜ |
-| H3 | (human) Google Cloud setup (D-80). | Vertex AI is enabled and the API's service account has the Vertex AI User role by 20 Oct. | | ⬜ |
+| H2 | (human) Neon, Vercel and GitHub accounts ready for M0.10; Google Cloud billing comes with H3. | A Neon project exists, and Cloud Build and Vercel can deploy from this repo. |  | 🔄 |
+| H3 | (human) Google Cloud setup (D-80). | Vertex AI is enabled and the API's service account has the Vertex AI User role by 20 Oct. |  | ✅ 2026-10-19 |
 
 ## Phase 2 — after the Top 10 (28 Oct), final submission 11 Nov
 
