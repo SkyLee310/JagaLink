@@ -50,7 +50,33 @@ Sources: PRD = `docs/PRD.md`, TS = `docs/TECH_SPEC.md`, PS = `docs/PROBLEM_STATE
 | D-27 | Every scenario runs cleanly end to end from a fresh start, and every scenario and evaluation result reproduces from the same version. | Demo stability, reproducibility · PRD §5 | ✅ |
 | D-28 | No real login: users pick a seeded name and role (guard or supervisor). The pitch states plainly that auth is out of scope. | TS §1, §9 | ✅ |
 | D-29 | Should features follow PRD §5 F9–F13; the F13 baseline uses only public video and simulated data, and supervisors can always override a learned threshold. | PRD §4–5 | ✅ |
+| D-52 | F4 loitering is a track's cumulative time in one zone within a rolling window (default ≥180 s within 10 min), so repeat passes add up. | S1's vehicle passes again and again before any quiet hours and never stops, so a single-dwell rule raises nothing · accepted 20 Oct | ✅ |
+| D-53 | F4 off-route: normal routes (node-code sequences) are seeded with the community layout into a new `community.normal_routes` jsonb field; off-route is a transition that no normal route contains. F13 later adds learned rare transitions. | TS §3's "transition with no link" cannot happen, because the linker only joins along links · accepted 20 Oct | ✅ |
+| D-54 | Times are stored in UTC and rules run in `community.timezone` (Asia/Kuala_Lumpur); scenario scripts use local time. The after-hours quiet period is 23:00–06:00 and applies to lane zones only. | A wrong zone shifts every after-hours result: TS §5's `21:14Z` is 05:14 in Malaysia · accepted 20 Oct | ✅ |
+| D-55 | F3 link times are walking times, so a per-class factor in linker config scales `travel_min_s`: person 1.0, vehicle 0.3. | S1 is a vehicle, which would otherwise arrive too early and split into new tracks · accepted 20 Oct | ✅ |
+| D-56 | F3 lifecycle: a track closes when no linked appearance arrives within the largest outgoing `travel_max_s`. Its TTL is 24 h after `last_ts` (config; the demo can shorten it). Expiry deletes the track and its segments and clears `anomaly.track_id`; alerts keep their evidence event IDs and timeline. | F3 expiry without losing incident records · accepted 20 Oct | ✅ |
+| D-57 | F5 next camera: neighbours are scored by direction of travel (from node coordinates), no immediate backtrack, walking time, and the transition's share of normal routes (D-53), with weights in config. The score never reads the scenario's true path. | Reading the true path would fake F8's accuracy · accepted 20 Oct | ✅ |
+| D-58 | F5 routing: each guard's `current_node_id` and `on_duty` come from the scenario's roster and stay fixed during a run; the Dijkstra weight of a link is (`travel_min_s` + `travel_max_s`) / 2. | Routing needs guard positions and one weight per link · accepted 20 Oct | ✅ |
+| D-59 | One open alert per (track, rule); repeat matches add evidence and send `alert_update`, not a new card. | Keeps false-alert counts honest and cards within 5 · accepted 20 Oct | ✅ |
+| D-60 | Rule-based severity, used before the agent answers and whenever it fails: off_route = high, after_hours = medium, loiter = medium; two or more rules on one track = high. The mapping lives in config. | Every alert card needs a severity from the start · accepted 20 Oct | ✅ |
+| D-61 | The alert is pushed as soon as the router finishes, its rule-based severity marked provisional; agent triage runs in the background and sends `alert_update`, and after an 8 s timeout the rule-based severity stays. This replaces TS §3's order, where the alert waited for the agent. | A Gemini round trip may not fit the 2 s budget · accepted 20 Oct | ✅ |
+| D-62 | An incident is one alert. Its timeline (`timeline_entry.alert_id`) is generated when the run ends (`timeline_ready`) and on demand, and includes the guard's confirm or dismiss. | PRD says "after each scenario"; TS keys timelines by alert · accepted 20 Oct | ✅ |
+| D-63 | Sensors are placed and linked like cameras and emit the same event types with a scripted object class; Phase 1 has no sensor-specific logic. | F1 includes sensors; nothing defined their events · accepted 20 Oct | ✅ |
+| D-64 | Zones (street, gate, lane) are seeded and shown read-only; the editor's properties panel sets each node's zone; drawing polygons stays out of Phase 1. | Rules need zones; F1 doesn't mention editing them · accepted 20 Oct | ✅ |
+| D-65 | Links (A, B) and (B, A) are the same link when either is bidirectional; two one-way links in opposite directions are allowed. | F1's duplicate rule · accepted 20 Oct | ✅ |
 | D-66 | Screens per role: a guard gets the alert console (alerts, map, timeline); a supervisor gets the console plus the layout editor, scenario player, rules and eval pages. | Routing and server role checks need it · accepted 16 Oct | ✅ |
+| D-67 | The "5 alerts without scrolling" check uses a 1366×768 laptop (guardhouse PC); on a phone the console works with scrolling. | The F6 criterion needs a viewport · accepted 20 Oct | ✅ |
+
+### Evaluation
+
+| ID | Decision | Reason · source | Status |
+|---|---|---|---|
+| D-68 | Targets (PRD Q1): next camera ≥80%, ≤2 false alerts per camera per night, timeline match ≥90%, time to alert below the baseline. Baseline: one guard cycles through every camera feed one at a time, 10 s each. | The report needs thresholds · accepted 20 Oct | ✅ |
+| D-70 | Ground truth — target and background labels, true path, expected alerts and timeline — lives only in the scenario file; the player never posts it, so F3–F7 cannot see it. TS §4's `scenario.truth_path` column is dropped. | Keeps the metrics honest · accepted 20 Oct | ✅ |
+| D-71 | Every scenario mixes its target with seeded, deterministic background movement along normal routes across a full 18:00–06:00 night; `make eval` replays the whole night headless, and the live demo plays a window around the target. | False alerts are unmeasurable without normal traffic · accepted 20 Oct | ✅ |
+| D-72 | False alerts per camera per night = alerts caused only by background objects ÷ number of cameras, over the full simulated night. | Metric definition · accepted 20 Oct | ✅ |
+| D-73 | Timeline match: the scenario file lists expected timeline entries (event references, in order); an entry matches when an agent `fact` entry cites the same events in the same order with a time within ±1 s; score = matched ÷ expected. | Metric definition · accepted 20 Oct | ✅ |
+| D-74 | CI golden tests use the rule-based agent; `make eval` and the demo replay agent responses recorded once from Vertex AI per scenario; `AGENT=live` calls Vertex AI. | LLM output varies run to run; numbers must reproduce (D-27) · accepted 20 Oct | ✅ |
 
 ### Architecture
 
@@ -63,6 +89,7 @@ Sources: PRD = `docs/PRD.md`, TS = `docs/TECH_SPEC.md`, PS = `docs/PROBLEM_STATE
 | D-34 | Every Vertex AI call has a timeout and a rule-based fallback, so a slow or failed call never blocks an alert. | TS §6, §9 | ✅ |
 | D-35 | The eval runner replays scenarios through the same engine as the demo. | Demo and numbers cannot drift apart · TS §3 | ✅ |
 | D-36 | Live updates use Server-Sent Events on `GET /stream?run_id=` with message types `event`, `track_update`, `alert`, `alert_update`, `timeline_ready`; the browser uses a fetch-based SSE client so it can send the bearer token. | One-way push fits the 2-s target · TS §2, §5 | ✅ |
+| D-77 | One backend instance: the scenario player is an in-process asyncio task, SSE fan-out is in memory, and each community has one live run at a time; no Redis or queue. | Simplest setup that meets the 2-s target · accepted 20 Oct | ✅ |
 
 ### Data and API
 
@@ -89,6 +116,8 @@ Sources: PRD = `docs/PRD.md`, TS = `docs/TECH_SPEC.md`, PS = `docs/PROBLEM_STATE
 | D-48 | CI: GitHub Actions `frontend.yml` and `backend.yml` run on every pull request and push to `main`; each skips its test job unless its folder changed (`frontend.yml` also runs when `backend/openapi.json` changes). CI runs the golden scenario tests, and failing tests block merges through branch protection on `main`. | TS §2, §7, §9; on 16 Oct the path check moved from the trigger into the job, because GitHub leaves a skipped workflow's required check pending | ✅ |
 | D-49 | Commit messages start with a type and the feature or milestone ID, e.g. `feat(F3): join tracks inside the walking window`. | Traceability · AGENTS.md, 16 Oct | ✅ |
 | D-78 | Approved supporting packages. Backend: `psycopg[binary]`, `pydantic-settings`, `httpx`. Frontend: `konva`, `@tailwindcss/vite`, `openapi-typescript`, `react-router`, `jsdom`, `@testing-library/react`, `@testing-library/dom`, `@playwright/test`, plus the Vite React-TS template's own dev dependencies. SSE is hand-written on both sides. | Implied by the stack; listed in AGENTS.md · accepted 16 Oct; `@testing-library/dom` added with the M0 plan, as a required peer of `@testing-library/react` | ✅ |
+| D-79 | The agent uses the current Flash-tier Gemini model in `asia-southeast1` (PRD Q6); M5 confirms it with a quick latency and cost check and records the model ID here. | F7 cost and latency · accepted 20 Oct | ✅ |
+| D-80 | Google Cloud: project `jagalink-hackathon` on the user's billing account, which also hosts Cloud Run (D-47), with Vertex AI enabled and the `jagalink-api` service account holding the Vertex AI User role. The deployed API runs as that service account, so production needs no key; local runs use `gcloud auth application-default login`, and no key goes into git. | M5 needs it · set up 19 Oct, accepted 20 Oct | ✅ |
 | D-81 | The code lives in a public GitHub repo named `JagaLink`, so judges can open the code link. | The submission needs a code link · accepted 16 Oct | ✅ |
 
 ### Testing and process
@@ -100,48 +129,7 @@ Sources: PRD = `docs/PRD.md`, TS = `docs/TECH_SPEC.md`, PS = `docs/PROBLEM_STATE
 
 ## Open — needs the user
 
-Each row carries a recommendation. "Needed by" is the first milestone that depends on it.
-
-### Product behaviour
-
-| ID | Question → recommendation | Why it matters | Needed by | Status |
-|---|---|---|---|---|
-| D-52 | Which rule catches S1? Its vehicle passes through the lanes again and again in the early evening, before any quiet hours, and never stops. → Measure loitering as a track's cumulative time in one zone within a rolling window (default ≥180 s within 10 min), so repeat passes add up. | Otherwise S1 raises no alert | M2 | ⏳ |
-| D-53 | Off-route can't fire as written: the linker only joins along links, so a track never contains "a transition with no link". → Seed normal routes (node-code sequences) with the community layout; off-route = a transition that no normal route contains. F13 later adds learned rare transitions. Needs a new jsonb field on `community`. | Contradiction between TS §3's rule and its linker; schema addition | M2 | ⏳ |
-| D-54 | After-hours window and time zone. → Store all times in UTC; evaluate rules in `community.timezone` (Asia/Kuala_Lumpur); scenario scripts use local time; quiet period 23:00–06:00, applied to residential lane zones only. (TS §5's example `21:14Z` is 05:14 in Malaysia.) | A wrong zone shifts every after-hours result | M2 | ⏳ |
-| D-55 | Link times are walking times, so a car arrives "too early" and splits into new tracks. → A per-class factor in linker config scales `travel_min_s`: person 1.0, vehicle 0.3. | S1 is a vehicle | M3 | ⏳ |
-| D-56 | Track lifecycle and expiry. → A track closes when no linked appearance arrives within the largest outgoing `travel_max_s`. TTL defaults to 24 h after `last_ts` (config; the demo can shorten it). Expiry deletes the track and its segments and clears `anomaly.track_id`; alerts keep their evidence event IDs and timeline. | F3 expiry without losing incident records | M3 | ⏳ |
-| D-57 | Next-camera inputs. → Score neighbours by direction of travel (from node coordinates), no immediate backtrack, walking time, and the transition's share of normal routes (D-53); weights in config. The score never reads `scenario.truth_path`. | TS §3 scores by "the scenario's known routes"; reading the truth path would fake F8's accuracy | M4 | ⏳ |
-| D-58 | Guard positions and route weight. → Each guard's `current_node_id` and `on_duty` come from the scenario's roster and stay fixed during a run; Dijkstra weight = (`travel_min_s` + `travel_max_s`) / 2. | F5 routing needs both | M4 | ⏳ |
-| D-59 | Alert de-duplication. → One open alert per (track, rule); repeat matches add evidence and send `alert_update`, not a new card. | Keeps false-alert counts honest and cards within 5 | M4 | ⏳ |
-| D-60 | Rule-based severity, used before M5 and whenever the agent fails. → off_route = high; after_hours = medium; loiter = medium; two or more rules on one track = high. Mapping in config. | The M4 card needs a severity | M4 | ⏳ |
-| D-61 | A Gemini round trip may not fit the 2-s budget. → Push the alert as soon as the router finishes, with the rule-based severity marked provisional; triage runs in the background and sends `alert_update` (timeout 8 s, after which the fallback stays). This changes TS §3, where the alert waits for the agent. | 2-s target vs agent latency | M5 | ⏳ |
-| D-62 | What is an incident? → One alert. Its timeline (`timeline_entry.alert_id`) is generated when the run ends (`timeline_ready`) and on demand, and includes the guard's confirm or dismiss. | PRD says "after each scenario"; TS keys timelines by alert | M5 | ⏳ |
-| D-63 | Sensors. → Placed and linked like cameras; they emit the same event types with a scripted object class; no sensor-specific logic in Phase 1. | F1 includes sensors; nothing defines their events | M1 | ⏳ |
-| D-64 | Zones in the editor. → Zones (street, gate, lane) are seeded and shown read-only; each node's zone is set in the editor's properties panel; drawing polygons stays out of Phase 1. | Rules need zones; F1 doesn't mention editing them | M1 | ⏳ |
-| D-65 | Duplicate links across directions. → (A, B) and (B, A) are the same link when either is bidirectional; two one-way links in opposite directions are allowed. | F1 duplicate rule | M1 | ⏳ |
-| D-67 | Screen size for the "5 alerts without scrolling" check. → A 1366×768 laptop (guardhouse PC); on a phone the console works with scrolling. | The F6 criterion needs a viewport | M4 | ⏳ |
-
-### Evaluation
-
-| ID | Question → recommendation | Why it matters | Needed by | Status |
-|---|---|---|---|---|
-| D-68 | Targets and baseline values (PRD Q1). → Adopt the PRD's suggested targets: next camera ≥80%, ≤2 false alerts per camera per night, timeline match ≥90%, time to alert below baseline. Baseline: one guard cycles through every camera feed one at a time, 10 s each. | Report thresholds; PRD due 21 Oct | M6 | ⏳ |
-| D-70 | Where ground truth lives. → Only in the scenario file (target vs background labels, true path, expected alerts and timeline); the player never posts it, so F3–F7 cannot see it. | Keeps the metrics honest | M2 | ⏳ |
-| D-71 | Normal traffic. → Every scenario mixes its target with seeded, deterministic background movement along normal routes across a full 18:00–06:00 night; `make eval` replays the whole night headless, and the live demo plays a window around the target. | False alerts are unmeasurable without it | M2 | ⏳ |
-| D-72 | What "per night" means. → False alerts per camera per night = alerts caused only by background objects ÷ number of cameras, over the full simulated night. | Metric definition | M6 | ⏳ |
-| D-73 | Timeline match. → The scenario file lists expected timeline entries (event references, in order); an entry matches when an agent `fact` entry cites the same events in the same order with a time within ±1 s; score = matched ÷ expected. | Metric definition | M6 | ⏳ |
-| D-74 | LLM output varies run to run. → CI golden tests use the rule-based agent; `make eval` and the demo replay agent responses recorded once from Vertex AI per scenario; `AGENT=live` calls Vertex AI. | Reproducible numbers (D-27) | M5 | ⏳ |
-
-### Data, API and stack
-
-| ID | Question → recommendation | Why it matters | Needed by | Status |
-|---|---|---|---|---|
-| D-77 | Process model. → One backend instance: the scenario player is an in-process asyncio task, SSE fan-out is in memory, one live run per community at a time; no Redis or queue. | Simplest setup that meets the 2-s target | M2 | ⏳ |
-| D-79 | Gemini model and region (PRD Q6). → The current Flash-tier Gemini model in `asia-southeast1`, confirmed by a quick latency and cost check. | F7 cost and latency | M5 | ⏳ |
-| D-80 | Google Cloud setup. → A GCP project on the user's billing account, which also hosts Cloud Run (D-47), with Vertex AI enabled and a service account holding the Vertex AI User role. The deployed API runs as that service account, so production needs no key; local runs use `gcloud auth application-default login`, and no key goes into git. | M5 is blocked without it | M5 | ⏳ |
-
-PRD §7 questions Q3 (retention period), Q4 (public video licences), Q5 (learning normal movement), Q7 (supervisor interview) and Q8 (pitch format) stay open in the PRD for Phase 2; Q1, Q2 and Q6 are D-68, D-69 and D-79 here.
+Nothing is open for Phase 1. PRD §7 questions Q3 (retention period), Q4 (public video licences), Q5 (learning normal movement), Q7 (supervisor interview) and Q8 (pitch format) stay open in the PRD for Phase 2; Q1, Q2 and Q6 are D-68, D-69 and D-79.
 
 ## Changelog
 
@@ -151,3 +139,4 @@ PRD §7 questions Q3 (retention period), Q4 (public video licences), Q5 (learnin
 | 2026-10-16 | D-66, D-69, D-75, D-76, D-78, D-81 decided: the user accepted the recommendations, unblocking M0. |
 | 2026-10-16 | M0 plan approved: D-42 (commit `backend/openapi.json`; CI fails on stale types), D-43 (React 19), D-46 (oxlint instead of ESLint), D-48 (path check moves from the trigger into the job), D-75 (`code` on zone too), D-78 (adds `@testing-library/dom`). |
 | 2026-10-19 | D-47 changed: the backend moves from Railway to Google Cloud Run and PostgreSQL to Neon's free plan, both in Singapore, after a paid Railway plan did not work out. D-80's recommendation drops the stored key, since the API runs as its Cloud Run service account. |
+| 2026-10-20 | D-52–D-65, D-67, D-68, D-70–D-74, D-77, D-79 and D-80 decided: the user approved every open recommendation at once ("automatically approve all the things"). D-70 also drops `scenario.truth_path`; D-80 names the project set up on 19 Oct. TECH_SPEC §3 and §4 follow D-52–D-58, D-61, D-62 and D-70. |
