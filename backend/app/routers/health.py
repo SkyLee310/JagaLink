@@ -19,7 +19,7 @@ class HealthOut(BaseModel):
 
 @router.get("/health", response_model=HealthOut, responses={503: {"model": HealthOut}})
 def health(db: Annotated[Session, Depends(get_db)]) -> HealthOut | JSONResponse:
-    """Liveness for Railway: 200 when the database answers, 503 when it does not."""
+    """Health probe: 200 when the database answers, 503 when it does not."""
     try:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError:

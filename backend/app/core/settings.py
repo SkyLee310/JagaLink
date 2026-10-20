@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def use_psycopg_driver(cls, url: str) -> str:
-        """Railway hands out postgresql:// URLs; SQLAlchemy needs the psycopg driver named."""
+        """Hosted Postgres URLs use postgresql://; SQLAlchemy needs the psycopg driver named."""
         for scheme in ("postgres://", "postgresql://"):
             if url.startswith(scheme):
                 return "postgresql+psycopg://" + url.removeprefix(scheme)
