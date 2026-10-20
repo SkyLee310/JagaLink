@@ -8,12 +8,10 @@ and visit for the evaluation; the player posts only the event contract (D-16, D-
 import random
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Literal
 
-from app.engine.graph import Graph, ObjectClass
+from app.engine.events import EventType, ObjectClass
+from app.engine.graph import Graph
 from app.sim.scenario import EventRef, NightClock, ScenarioFile, Target
-
-EventType = Literal["appear", "dwell", "disappear"]
 
 EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 TYPE_RANK: dict[str, int] = {"appear": 0, "dwell": 1, "disappear": 2}

@@ -1,6 +1,6 @@
-"""Load the seeded community (Taman Simulasi, D-69) and its staff.
+"""Load the seeded community (Taman Simulasi, D-69), its staff and its scenarios.
 
-python -m app.db.seed            insert the community if it is missing
+python -m app.db.seed            insert the community if it is missing; refresh its scenarios
 python -m app.db.seed --reset    delete it and load it again (clean demo state, D-27)
 """
 
@@ -13,10 +13,11 @@ from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import AppUser, Community, Link, Node, Role, Zone
+from app.db.models import AppUser, Community, Link, Node, Role, Scenario, Zone
 from app.db.session import get_engine
 from app.schemas.common import Code
 from app.schemas.layout import LayoutFile
+from app.sim.scenario import SCENARIO_DIR, NightClock, load_scenario, scenario_paths
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 DEFAULT_LAYOUT = DATA_DIR / "layouts" / "taman-simulasi.json"
@@ -51,6 +52,7 @@ class SeedReport:
     nodes: int
     links: int
     users: int
+    scenarios: int
 
 
 def seed(
@@ -58,8 +60,12 @@ def seed(
     layout_path: Path = DEFAULT_LAYOUT,
     users_path: Path = DEFAULT_USERS,
     reset: bool = False,
+    scenario_dir: Path = SCENARIO_DIR,
 ) -> SeedReport:
-    """Insert the community unless it exists; with reset, replace it. The caller commits."""
+    """Insert the community unless it exists; with reset, replace it. The caller commits.
+
+    Scenarios always follow their files, so a database seeded before a scenario existed gets it.
+    """
     layout = LayoutFile.model_validate_json(layout_path.read_text(encoding="utf-8"))
     staff = UsersFile.model_validate_json(users_path.read_text(encoding="utf-8"))
     slug = layout.community.slug
@@ -72,6 +78,7 @@ def seed(
     community_id = seed_id(slug, "community")
     if db.scalar(select(Community.id).where(Community.id == community_id)) is not None:
         if not reset:
+            seed_scenarios(db, community_id, layout, scenario_dir)
             return _report(db, community_id, created=False)
         db.execute(delete(Community).where(Community.id == community_id))  # cascades
         db.expunge_all()
@@ -145,15 +152,47 @@ def seed(
         for user in staff.users
     )
     db.flush()
+    seed_scenarios(db, community_id, layout, scenario_dir)
     return _report(db, community_id, created=True)
 
 
+def seed_scenarios(
+    db: Session, community_id: uuid.UUID, layout: LayoutFile, directory: Path = SCENARIO_DIR
+) -> None:
+    """Insert or update one row per scenario file of this community; the truth stays in the file."""
+    slug = layout.community.slug
+    for path in scenario_paths(directory):
+        scenario = load_scenario(path)
+        if scenario.community != slug:
+            continue
+        clock = NightClock(scenario.night, layout.community.timezone)
+        window = clock.at(scenario.live_window.end) - clock.at(scenario.live_window.start)
+        row = db.get(Scenario, seed_id(slug, "scenario", scenario.code))
+        if row is None:
+            row = Scenario(id=seed_id(slug, "scenario", scenario.code), community_id=community_id)
+            db.add(row)
+        row.code = scenario.code
+        row.name = scenario.name
+        row.description = scenario.description
+        row.script_path = path.name
+        row.duration_s = round(window.total_seconds())
+    db.flush()
+
+
 def _report(db: Session, community_id: uuid.UUID, created: bool) -> SeedReport:
-    def count(model: type[Zone] | type[Node] | type[Link] | type[AppUser]) -> int:
+    def count(model: type[Zone | Node | Link | AppUser | Scenario]) -> int:
         query = select(func.count()).select_from(model).where(model.community_id == community_id)
         return db.scalar(query) or 0
 
-    return SeedReport(community_id, created, count(Zone), count(Node), count(Link), count(AppUser))
+    return SeedReport(
+        community_id,
+        created,
+        count(Zone),
+        count(Node),
+        count(Link),
+        count(AppUser),
+        count(Scenario),
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -166,7 +205,7 @@ def main(argv: list[str] | None = None) -> None:
     state = "loaded" if report.created else "already present, left unchanged"
     print(
         f"Seed {state}: {report.zones} zones, {report.nodes} nodes, "
-        f"{report.links} links, {report.users} users"
+        f"{report.links} links, {report.users} users, {report.scenarios} scenarios"
     )
 
 

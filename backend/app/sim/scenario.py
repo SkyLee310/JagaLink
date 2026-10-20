@@ -14,7 +14,8 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.engine.graph import Graph, GraphNode, LinkData, ObjectClass
+from app.engine.events import EventType, ObjectClass
+from app.engine.graph import Graph, GraphNode, LinkData
 from app.schemas.common import Code
 from app.schemas.layout import LayoutFile
 
@@ -23,7 +24,6 @@ SCENARIO_DIR = Path(__file__).resolve().parents[2] / "data" / "scenarios"
 LocalTime = Annotated[
     str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?$")
 ]
-EventType = Literal["appear", "dwell", "disappear"]
 Rule = Literal["after_hours", "loiter", "off_route"]
 
 

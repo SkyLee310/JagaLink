@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import Callable, Iterator
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,8 @@ from app.core.settings import get_settings
 from app.db.seed import SeedReport, seed, seed_id
 from app.db.session import get_db
 from app.main import create_app
+from app.sim.runs import RunManager
+from tests.fakes import FrozenTimer
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -81,6 +84,8 @@ def seeded(db: Session) -> SeedReport:
 def client(db: Session) -> Iterator[TestClient]:
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
+    # Players share the test's session and stand still until a test swaps the timer.
+    app.state.runs = RunManager(timer=FrozenTimer(), session_scope=lambda: nullcontext(db))
     with TestClient(app) as test_client:
         yield test_client
 

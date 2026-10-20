@@ -1,19 +1,33 @@
 """Tables from TECH_SPEC §4. Every change here needs an Alembic migration (D-38)."""
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any, Literal, get_args
 
-from sqlalchemy import Boolean, CheckConstraint, Double, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Double,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy import text as sql
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.engine.events import EventSource, EventType, ObjectClass
 
 ZoneKind = Literal["street", "gate", "lane"]
 NodeKind = Literal["camera", "sensor"]
 NodeStatus = Literal["online", "offline"]
 Role = Literal["guard", "supervisor"]
+RunMode = Literal["live", "eval"]
+RunState = Literal["ready", "playing", "paused", "finished", "stopped"]
 
 
 def one_of(column: str, values: Any) -> str:
@@ -120,3 +134,78 @@ class AppUser(Base):
     current_node_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("node.id", ondelete="SET NULL")
     )
+
+
+class Scenario(Base):
+    """A scripted scenario (F2). Its ground truth stays in the script file (D-70)."""
+
+    __tablename__ = "scenario"
+    __table_args__ = (UniqueConstraint("community_id", "code"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    code: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text)
+    # File name under backend/data/scenarios/.
+    script_path: Mapped[str] = mapped_column(Text)
+    # Length of the live window the player plays (D-71).
+    duration_s: Mapped[int] = mapped_column(Integer)
+
+
+class ScenarioRun(Base):
+    """One playback (live) or headless replay (eval) of a scenario."""
+
+    __tablename__ = "scenario_run"
+    __table_args__ = (
+        CheckConstraint(one_of("mode", RunMode), name="mode"),
+        CheckConstraint(one_of("state", RunState), name="state"),
+        CheckConstraint("speed > 0", name="speed"),
+        # D-77: a community has one live run at a time; starting another stops the old one.
+        Index(
+            "uq_scenario_run_live",
+            "community_id",
+            unique=True,
+            postgresql_where=sql("mode = 'live' AND state <> 'stopped'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    scenario_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scenario.id", ondelete="CASCADE"))
+    mode: Mapped[str] = mapped_column(Text)
+    speed: Mapped[float] = mapped_column(Double)
+    state: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Event(Base):
+    """One sighting event in the single contract every source posts (D-16, D-30)."""
+
+    __tablename__ = "event"
+    __table_args__ = (
+        UniqueConstraint("run_id", "seq"),
+        CheckConstraint(one_of("type", EventType), name="type"),
+        CheckConstraint(one_of("object_class", ObjectClass), name="object_class"),
+        CheckConstraint(one_of("source", EventSource), name="source"),
+        Index("ix_event_run_id_ts", "run_id", "ts"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    community_id: Mapped[uuid.UUID] = community_fk()
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scenario_run.id", ondelete="CASCADE"))
+    # Ingest order within the run: the pipeline and the feed read events in this order.
+    seq: Mapped[int] = mapped_column(Integer)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("node.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(Text)
+    object_class: Mapped[str] = mapped_column(Text)
+    local_track_id: Mapped[str] = mapped_column(Text)
+    # Never personal data (D-10); the ingest schema refuses identity-like keys.
+    attrs: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default=sql("'{}'::jsonb")
+    )
+    source: Mapped[str] = mapped_column(Text)

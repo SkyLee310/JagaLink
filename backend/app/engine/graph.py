@@ -8,7 +8,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-ObjectClass = Literal["person", "vehicle"]
+from app.engine.events import ObjectClass
 
 # D-55: link times are walking times; a vehicle may arrive sooner, down to this share of
 # travel_min_s. travel_max_s stays as it is.
