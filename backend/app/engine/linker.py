@@ -81,6 +81,8 @@ class Changes:
 
     updated: dict[int, Track] = field(default_factory=dict)
     expired: dict[int, Track] = field(default_factory=dict)
+    placed: Track | None = None
+    """The track `feed` put its sighting in."""
 
     def touch(self, track: Track) -> None:
         self.updated[track.number] = track
@@ -106,7 +108,8 @@ class Linker:
     def feed(self, sighting: Sighting) -> Changes:
         """Add one event; events must come in time order."""
         changes = self.advance(sighting.ts)
-        changes.touch(self._place(sighting))
+        changes.placed = self._place(sighting)
+        changes.touch(changes.placed)
         return changes
 
     def advance(self, now: datetime) -> Changes:
