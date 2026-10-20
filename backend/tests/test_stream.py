@@ -38,7 +38,9 @@ def test_the_stream_sends_the_backlog_and_ends_when_the_run_is_reset(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.headers["cache-control"] == "no-cache"
-    frames = [frame.split("\n") for frame in response.text.split("\n\n") if frame]
+    opened, *messages = response.text.split("\n\n")
+    assert opened == ": open"
+    frames = [frame.split("\n") for frame in messages if frame]
     kinds = [frame[1] for frame in frames]
     assert kinds.count("event: event") == 15
     assert frames[0][:2] == ["id: 1", "event: event"]

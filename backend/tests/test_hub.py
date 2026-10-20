@@ -49,6 +49,7 @@ def test_frames_send_the_backlog_pings_when_idle_and_end_on_close() -> None:
         backlog, queue = hub.subscribe(RUN)
         out: list[str] = []
         stream = frames(hub, RUN, backlog, queue, ping_s=0.01)
+        assert await anext(stream) == ": open\n\n"  # at once, even with nothing to replay
         out.append(await anext(stream))
         out.append(await anext(stream))  # nothing new: a keep-alive comment
         hub.publish(RUN, [("alert", {"id": "a1"})])
