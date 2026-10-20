@@ -10,6 +10,7 @@ Add a row before you start editing; remove it when you finish.
 
 | Owner | Task | Files | Since |
 |---|---|---|---|
+| @agent-a | M3 | `backend/app/{engine,sim,db,routers,schemas,core}/`, `backend/app/db/migrations/versions/`, `backend/data/scenarios/golden/`, `backend/tests/`, `frontend/src/{api,lib,components/map,features/scenario-player}/` | 2026-10-20 |
 
 ## Phase 1 — proposal submission, 23 Oct
 
@@ -67,11 +68,11 @@ Needs: D-55, D-56.
 
 | ID | Task | Done when | Owner | Status |
 |---|---|---|---|---|
-| M3.1 | Path linker (pure): window join (D-17), class match, vehicle factor (D-55), best time fit, anonymous IDs. | Unit tests: in-window join, early or late → new track, unlinked camera → new track, two competing objects. | | ⬜ |
-| M3.2 | Golden path files for S1 and S2. | `make test` fails when either scenario's paths change. | | ⬜ |
-| M3.3 | Migration for `track`, `track_segment`; ingest → linker → DB; `track_update` over SSE; `GET /tracks`, `GET /tracks/{id}`. | A track reads back with ordered segments. | | ⬜ |
-| M3.4 | Path overlay: a growing line between cameras, labelled with the anonymous ID. | In S2 one line follows the person across cameras. | | ⬜ |
-| M3.5 | Track lifecycle and expiry (D-56): close rule, `expires_at`, purge job. | With a short TTL, an expired track returns 404 after the purge. | | ⬜ |
+| M3.1 | Path linker (pure): window join (D-17), class match, vehicle factor (D-55), best time fit, anonymous IDs. | Unit tests: in-window join, early or late → new track, unlinked camera → new track, two competing objects. | @agent-a | 🔄 |
+| M3.2 | Golden path files for S1 and S2. | `make test` fails when either scenario's paths change. | @agent-a | 🔄 |
+| M3.3 | Migration for `track`, `track_segment`; ingest → linker → DB; `track_update` over SSE; `GET /tracks`, `GET /tracks/{id}`. | A track reads back with ordered segments. | @agent-a | 🔄 |
+| M3.4 | Path overlay: a growing line between cameras, labelled with the anonymous ID. | In S2 one line follows the person across cameras. | @agent-a | 🔄 |
+| M3.5 | Track lifecycle and expiry (D-56): close rule, `expires_at`, purge job. | With a short TTL, an expired track returns 404 after the purge. | @agent-a | 🔄 |
 
 ### M4 · A path raises an alert on the guard screen (F4, F5, F6) — target Wed 21 Oct
 
