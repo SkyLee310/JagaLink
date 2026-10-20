@@ -11,7 +11,7 @@ dev:
 	$(MAKE) -j 2 dev-api dev-web
 
 dev-api: seed
-	cd backend && uv run uvicorn app.main:app --reload --port 8000
+	cd backend && uv run uvicorn app.main:app --reload --port 8000 --timeout-graceful-shutdown 3
 
 dev-web:
 	cd frontend && pnpm dev

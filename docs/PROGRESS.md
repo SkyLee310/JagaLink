@@ -91,3 +91,44 @@ One entry per milestone or working session, newest last: what changed, the imple
   `make db`, `make seed` and `make test` call Docker, so run their inner commands instead, e.g. `cd backend && uv run alembic upgrade head`.
 - Every layout write must be checked against the community's zones. An empty zone list fails every zoned node with `unknown_zone`; CI caught this in PR #5.
 - The browser pane's screenshot can show a frame from before the last clicks. Read the DOM, or take a second screenshot, before calling something a bug.
+
+## 2026-10-20 · M2 play a scenario (F2)
+
+**Status.** M2.1–M2.6 done (PR #6). The deployed check waits on M0.10.
+
+**What changed**
+- Scenarios: `backend/data/scenarios/` holds S1 (vehicle circling the south lanes, evening) and S2 (person over the back fence at night). Each file has background traffic (D-71), local times (D-54) and in-file ground truth (D-70). Golden event files in `golden/` pin each whole night; `uv run python -m app.sim.golden` rewrites them.
+- Backend:
+  - pure core: `engine/clock.py` (simulated clock), `sim/script.py` (scenario → ordered event list), `engine/events.py` (the event literals shared by every module);
+  - migration `0003`: `scenario`, `scenario_run` and `event`, with one live run per community enforced by a partial unique index (D-77);
+  - `POST /events` batch ingest and `GET /events` filters; `GET /scenarios`; `POST /scenario-runs`, `GET /scenario-runs/current`, `GET /scenario-runs/{id}`, and `/pause`, `/resume`, `/reset`;
+  - `GET /stream?run_id=`: Server-Sent Events, the stored backlog first, then live `event` messages and keep-alive comments;
+  - the seed loads both scenarios; `tzdata` gives Windows the IANA zones (D-78).
+- Frontend: `/player` for supervisors:
+  - scenario and speed pickers, Play, Pause and Reset, a ticking clock, a progress bar and an event count;
+  - a live event feed (time, camera, type, class, per-camera ID);
+  - the map rings each camera with an object in view and flashes it when an event arrives;
+  - `api/sse.ts`, a fetch-based SSE client that sends the bearer token and reconnects with backoff; `lib/liveRun.ts` folds messages into the feed and map state.
+- On a phone the header's page links take their own row, and the player page scrolls.
+- Browser check (local API on PostgreSQL 16):
+  - at 1366 × 768, S1 played at 10×, paused with the clock frozen at 24/50 events, resumed at 120×, finished at 50/50, then reset to Ready with an empty feed;
+  - S2 at 60× lit the north fence sensor, then the back-lane and lane 2 cameras, and finished at 15/15; Reset worked;
+  - at 375 px wide the page has no horizontal scroll.
+
+**Implementation decisions**
+- An event's `node_id` is the node's UUID, like every other API body (D-40). TECH_SPEC's example event shows a code; that example is illustrative only.
+- The player is an asyncio task on the app's event loop. Routes stay sync and reach the loop with `run_coroutine_threadsafe`. Each emitted batch goes through the same `event_store.ingest` as `POST /events`, then the hub publishes it to the run's SSE subscribers.
+- The hub keeps a per-run message log. A subscriber gets the stored backlog first, so a late join or a reconnect sees the whole run. Reset, or a new run replacing the old one, closes the stream; the client reconnects and starts from an empty feed.
+- Starting a run stops the community's current live run and puts the guards at the posts in the scenario's roster.
+- After an API restart a run that was playing comes back paused. Resume continues from the stored event count and the last event time.
+- The page polls the current run every second while it plays and ticks the clock between polls at the run's speed.
+- An event's `attrs` hold at most 10 short scalar values, and keys that name identity (face, name, plate, IC, phone…) are refused (D-10, privacy by construction).
+- `uvicorn` runs with `--timeout-graceful-shutdown 3` (Makefile and Dockerfile), so an open SSE stream cannot block a reload or a Cloud Run shutdown.
+
+**⚠️ Traps**
+- pytest's `tmp_path` fixture fails here with a `PermissionError` on `…\Temp\pytest-of-Sky Lee`. Keep tests off it.
+- `pyproject.toml` already sets `addopts = "-q"`; another `-q` hides the summary line.
+- API tests share one DB session with the player. A route must not touch the DB after it starts a player. Set `InstantTimer` on the run manager before starting a run (swapping it later does nothing), and wait with `client.portal.call(manager.wait, run_id)`.
+- SQLAlchemy 2.1: `Result.tuples()` is deprecated and `dict(result)` fails; build dicts with a comprehension over the rows.
+- FastAPI wraps included routes as `_IncludedRouter`; list paths with `app.openapi()`.
+- The Vite dev server's Tailwind missed every class in a feature folder created while it ran. Restart `pnpm dev` after adding a folder.

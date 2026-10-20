@@ -29,7 +29,7 @@ When docs conflict, DECISIONS wins, then PRD for product behaviour and TECH_SPEC
 | Should phase only | F10: Ultralytics YOLO, ByteTrack, OpenCV, ffmpeg · F13: pandas, scikit-learn |
 | Tests | pytest, Vitest, Playwright |
 | Tooling | uv, pnpm, Docker Compose, GNU make, GitHub Actions, ruff, oxlint |
-| Supporting (D-78) | Backend: psycopg[binary], pydantic-settings, httpx · Frontend: konva, @tailwindcss/vite, openapi-typescript, react-router, jsdom, @testing-library/react, @testing-library/dom, @playwright/test, plus the Vite React-TS template's dev dependencies |
+| Supporting (D-78) | Backend: psycopg[binary], pydantic-settings, httpx, tzdata · Frontend: konva, @tailwindcss/vite, openapi-typescript, react-router, jsdom, @testing-library/react, @testing-library/dom, @playwright/test, plus the Vite React-TS template's dev dependencies |
 
 ## Commands
 

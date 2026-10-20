@@ -7,7 +7,7 @@ from sqlalchemy import Engine, inspect
 from app.db import models  # noqa: F401  (registers the tables on Base.metadata)
 from app.db.base import Base
 
-TABLES = {"community", "zone", "node", "link", "app_user"}
+TABLES = {"community", "zone", "node", "link", "app_user", "scenario", "scenario_run", "event"}
 
 
 def tables(engine: Engine) -> set[str]:

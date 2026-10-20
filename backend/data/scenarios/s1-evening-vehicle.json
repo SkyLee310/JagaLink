@@ -1,0 +1,495 @@
+{
+  "code": "s1-evening-vehicle",
+  "name": "S1 · Vehicle circling the south lanes",
+  "description": "Early in the evening a vehicle comes in at the main gate, drives slowly through lanes 1 to 3 south, returns along the main road and repeats the loop three times without stopping, then leaves by the gate. No single pass stands out; the repeat passes add up.",
+  "community": "taman-simulasi",
+  "night": {
+    "date": "2026-10-21",
+    "start": "18:00",
+    "end": "06:00"
+  },
+  "live_window": {
+    "start": "19:18",
+    "end": "19:32"
+  },
+  "default_speed": 10,
+  "roster": [
+    {
+      "user": "u-guard-01",
+      "on_duty": true,
+      "node": "c-gate-01"
+    },
+    {
+      "user": "u-guard-02",
+      "on_duty": true,
+      "node": "c-main-02"
+    },
+    {
+      "user": "u-guard-03",
+      "on_duty": false,
+      "node": null
+    }
+  ],
+  "targets": [
+    {
+      "key": "t1",
+      "label": "Vehicle circling the south lanes",
+      "object_class": "vehicle",
+      "visits": [
+        {
+          "node": "c-gate-01",
+          "at": "19:20:00",
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-01",
+          "after_s": 17,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-1s",
+          "after_s": 9,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-2s",
+          "after_s": 56,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-3s",
+          "after_s": 58,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-03",
+          "after_s": 9,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-02",
+          "after_s": 15,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-01",
+          "after_s": 15,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-1s",
+          "after_s": 9.5,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-2s",
+          "after_s": 57,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-3s",
+          "after_s": 55,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-03",
+          "after_s": 9,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-02",
+          "after_s": 15.5,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-01",
+          "after_s": 14.5,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-1s",
+          "after_s": 9,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-2s",
+          "after_s": 58,
+          "stay_s": 3
+        },
+        {
+          "node": "c-lane-3s",
+          "after_s": 56.5,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-03",
+          "after_s": 9.5,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-02",
+          "after_s": 15,
+          "stay_s": 3
+        },
+        {
+          "node": "c-main-01",
+          "after_s": 15,
+          "stay_s": 3
+        },
+        {
+          "node": "c-gate-02",
+          "after_s": 17,
+          "stay_s": 3
+        }
+      ]
+    }
+  ],
+  "background": {
+    "seed": 1001,
+    "trips_per_hour": {
+      "18": 16,
+      "19": 14,
+      "20": 12,
+      "21": 10,
+      "22": 6,
+      "23": 3,
+      "00": 2,
+      "01": 1,
+      "02": 1,
+      "03": 0,
+      "04": 1,
+      "05": 4
+    },
+    "vehicle_share": 0.35
+  },
+  "truth": {
+    "first_unusual": {
+      "target": "t1",
+      "visit": 8,
+      "type": "appear"
+    },
+    "expected_alerts": [
+      {
+        "target": "t1",
+        "rule": "loiter"
+      }
+    ],
+    "expected_timeline": [
+      {
+        "text": "Vehicle in view of camera c-gate-01.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 0,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 0,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-01.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 1,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 1,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-1s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 2,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 2,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-2s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 3,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 3,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-3s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 4,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 4,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-03.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 5,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 5,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 6,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 6,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-01.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 7,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 7,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-1s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 8,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 8,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-2s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 9,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 9,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-3s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 10,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 10,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-03.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 11,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 11,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 12,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 12,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-01.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 13,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 13,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-1s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 14,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 14,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-2s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 15,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 15,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-lane-3s.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 16,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 16,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-03.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 17,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 17,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 18,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 18,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-main-01.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 19,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 19,
+            "type": "disappear"
+          }
+        ]
+      },
+      {
+        "text": "Vehicle in view of camera c-gate-02.",
+        "events": [
+          {
+            "target": "t1",
+            "visit": 20,
+            "type": "appear"
+          },
+          {
+            "target": "t1",
+            "visit": 20,
+            "type": "disappear"
+          }
+        ]
+      }
+    ]
+  }
+}

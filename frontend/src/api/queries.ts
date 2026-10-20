@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../lib/session'
 import { apiFetch } from './client'
-import type { Layout, LayoutFile, LayoutInput, Session, SessionUser } from './types'
+import type {
+  Layout,
+  LayoutFile,
+  LayoutInput,
+  Run,
+  Scenario,
+  Session,
+  SessionUser,
+} from './types'
 
 export function useSessionUsers() {
   return useQuery({
@@ -55,5 +63,46 @@ export function useImportLayout(communityId: string) {
         body: JSON.stringify(file),
       }),
     onSuccess: (layout) => queryClient.setQueryData(['layout', communityId], layout),
+  })
+}
+
+/** Scripted scenarios with their live window (F2); never their ground truth (D-70). */
+export function useScenarios() {
+  return useQuery({ queryKey: ['scenarios'], queryFn: () => apiFetch<Scenario[]>('/scenarios') })
+}
+
+const CURRENT_RUN = ['current-run']
+
+/** The community's live run, or null; polled faster while it plays. */
+export function useCurrentRun() {
+  return useQuery({
+    queryKey: CURRENT_RUN,
+    queryFn: () => apiFetch<Run | null>('/scenario-runs/current'),
+    refetchInterval: (query) => (query.state.data?.state === 'playing' ? 1000 : 5000),
+  })
+}
+
+/** Plays a scenario; the community's previous run stops (D-77). */
+export function useStartRun() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scenario_id: string; speed?: number }) =>
+      apiFetch<Run>('/scenario-runs', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: (run) => queryClient.setQueryData(CURRENT_RUN, run),
+  })
+}
+
+export type RunAction = 'pause' | 'resume' | 'reset'
+
+/** Pause, resume (optionally at a new speed) or reset the run. */
+export function useRunAction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ runId, action, speed }: { runId: string; action: RunAction; speed?: number }) =>
+      apiFetch<Run>(`/scenario-runs/${runId}/${action}`, {
+        method: 'POST',
+        body: speed === undefined ? undefined : JSON.stringify({ speed }),
+      }),
+    onSuccess: (run) => queryClient.setQueryData(CURRENT_RUN, run),
   })
 }
